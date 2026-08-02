@@ -1,0 +1,9 @@
+Flask==3.0.3
+opencv-python==4.10.0.84
+numpy==1.26.4
+SpeechRecognition==3.10.4
+pydub==0.25.1
+PyPDF2==3.0.1
+python-docx==1.1.2
+bcrypt==4.2.0
+Werkzeug==3.0.3

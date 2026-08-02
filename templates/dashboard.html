@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · MockMate{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Placement Command Center</span>
+<h1>Welcome, {{ user.name.split(' ')[0] }}</h1>
+<p style="color:var(--text-dim); margin-bottom:32px;">
+  {{ user.college or 'Your college' }} · {{ user.branch or 'Your branch' }} · Targeting {{ user.target_role or 'your next role' }}
+</p>
+
+<div class="grid-3" style="margin-bottom:32px;">
+  <div class="stat-tile">
+    <div class="stat-value">{{ summary.avg_overall }}<span style="font-size:1rem;">/100</span></div>
+    <div class="stat-label">Placement readiness score</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-value">{{ summary.avg_eye_contact }}<span style="font-size:1rem;">%</span></div>
+    <div class="stat-label">Average eye contact</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-value">{{ summary.total_answers }}</div>
+    <div class="stat-label">Answers analyzed</div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:32px; align-items:start;">
+  <div class="card">
+    <h3>Start your next session</h3>
+    <p style="color:var(--text-dim); font-size:0.9rem; margin-bottom:18px;">
+      Practice for a specific company's placement drive, a job description, or general domain questions.
+    </p>
+    <a href="{{ url_for('new_interview') }}" class="btn btn-primary">+ New live interview</a>
+  </div>
+
+  <div class="card">
+    <h3>Company-wise readiness</h3>
+    {% if summary.by_company %}
+      <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;">
+        {% for company, score in summary.by_company.items() %}
+          <div class="company-chip">{{ company }} <span class="score">{{ score }}</span></div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p style="color:var(--text-dim); font-size:0.9rem;">
+        No company-specific sessions yet. Pick a target company next time you start an interview to track readiness per company.
+      </p>
+      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
+        {% for c in company_list %}
+          <div class="company-chip">{{ c }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card">
+  <h3>Recent answers</h3>
+  {% if history %}
+  <table class="history">
+    <thead>
+      <tr>
+        <th>Question</th>
+        <th>Target</th>
+        <th>Overall</th>
+        <th>Eye contact</th>
+        <th>Filler words</th>
+        <th>Pace (WPM)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in history %}
+      <tr>
+        <td style="max-width:280px;">{{ r.question }}</td>
+        <td>{{ r.company or r.job_title or r.domain or '—' }}</td>
+        <td>
+          <span class="score-pill {% if r.overall_score >= 70 %}score-high{% elif r.overall_score >= 45 %}score-mid{% else %}score-low{% endif %}">
+            {{ r.overall_score }}
+          </span>
+        </td>
+        <td>{{ r.eye_contact_score }}%</td>
+        <td>{{ r.filler_word_count }}</td>
+        <td>{{ r.speaking_rate_wpm }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+    <p style="color:var(--text-dim); font-size:0.9rem;">No completed answers yet -- start a New Interview to build your history.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Live Interview · MockMate{% endblock %}
+
+{% block content %}
+<span class="eyebrow">
+  {% if interview_session.company %}{{ interview_session.company }} placement drive
+  {% elif interview_session.job_title %}{{ interview_session.job_title }}
+  {% else %}{{ interview_session.domain }} domain
+  {% endif %}
+</span>
+<h1>Live interview room</h1>
+
+<div class="interview-room" style="margin-top:24px;">
+
+  <!-- AI Avatar panel -->
+  <div class="avatar-panel" id="avatar-panel">
+    <div class="avatar-status" id="avatar-status">READY</div>
+    <div class="avatar-window">
+      <svg class="avatar-face" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="46"></circle>
+        <circle class="eye" cx="34" cy="42" r="6"></circle>
+        <circle class="eye" cx="66" cy="42" r="6"></circle>
+        <path d="M 32 64 Q 50 78 68 64" stroke="#1B2340" stroke-width="5" fill="none" stroke-linecap="round"></path>
+      </svg>
+      <div class="avatar-bars">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+    </div>
+    <div class="avatar-name">Aria · AI Interviewer</div>
+
+    <div class="progress-track">
+      <div class="track-bg"><div class="track-fill" id="track-fill" style="width:0%;"></div></div>
+      <div class="track-label" id="track-label">Question 0 of {{ questions|length }}</div>
+    </div>
+  </div>
+
+  <!-- Interview stage -->
+  <div class="stage-card">
+    <div class="question-index" id="question-index">QUESTION 1 OF {{ questions|length }}</div>
+    <div class="question-text" id="question-text">{{ questions[0] if questions else "No questions generated." }}</div>
+
+    <div class="video-stage">
+      <video id="live-video" autoplay muted playsinline></video>
+      <div class="rec-indicator" id="rec-indicator"><span class="rec-dot"></span> RECORDING</div>
+    </div>
+
+    <div class="control-row">
+      <button class="btn btn-outline" id="btn-camera">Enable camera & mic</button>
+      <button class="btn btn-primary" id="btn-record" disabled>● Start recording answer</button>
+      <button class="btn btn-danger" id="btn-stop" style="display:none;">■ Stop & analyze</button>
+      <button class="btn btn-outline" id="btn-replay">🔊 Replay question</button>
+    </div>
+
+    <div class="result-panel" id="result-panel">
+      <div id="analyzing-msg" style="display:none; color:var(--text-dim); font-size:0.9rem;">
+        <span class="loading-spinner" style="border-top-color:var(--ink); border-color:rgba(27,35,64,0.2);"></span>
+        Analyzing your speech and expressions...
+      </div>
+      <div id="result-content" style="display:none;">
+        <div class="result-scores">
+          <div class="mini-score"><div class="val" id="score-overall">-</div><div class="lbl">Overall</div></div>
+          <div class="mini-score"><div class="val" id="score-eye">-</div><div class="lbl">Eye contact</div></div>
+          <div class="mini-score"><div class="val" id="score-conf">-</div><div class="lbl">Confidence</div></div>
+          <div class="mini-score"><div class="val" id="score-filler">-</div><div class="lbl">Filler words</div></div>
+          <div class="mini-score"><div class="val" id="score-wpm">-</div><div class="lbl">Pace (WPM)</div></div>
+        </div>
+        <div class="feedback-box" id="feedback-text"></div>
+        <div class="transcript-box" id="transcript-text"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:24px; text-align:right;">
+      <button class="btn btn-outline" id="btn-next" style="display:none;">Next question →</button>
+      <a href="{{ url_for('dashboard') }}" class="btn btn-primary" id="btn-finish" style="display:none;">Finish & view dashboard</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.MOCKMATE_QUESTIONS = {{ questions|tojson }};
+  window.MOCKMATE_SESSION_ID = {{ session_id }};
+</script>
+<script src="{{ url_for('static', filename='js/interview.js') }}"></script>
+{% endblock %}

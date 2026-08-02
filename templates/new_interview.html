@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}New Interview · MockMate{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Set up your session</span>
+<h1>Start a mock interview</h1>
+<p style="color:var(--text-dim); margin-bottom:24px;">Choose how you want to prepare, then step into the live interview room.</p>
+
+<div class="card" style="max-width:720px;">
+  <div class="mode-tabs">
+    <div class="mode-tab active" data-mode="domain">General Domain</div>
+    <div class="mode-tab" data-mode="company">Campus Placement</div>
+    <div class="mode-tab" data-mode="job">Job Description</div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" id="setup-form">
+    <input type="hidden" name="mode" id="mode-input" value="domain">
+
+    <div class="mode-panel active" data-mode="domain">
+      <label for="domain">Interview domain</label>
+      <select name="domain" id="domain">
+        {% for d in domains %}
+          <option value="{{ d }}">{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mode-panel" data-mode="company">
+      <label for="company">Target company</label>
+      <select name="company" id="company">
+        {% for c in company_list %}
+          <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+      <p style="font-size:0.82rem; color:var(--text-dim); margin-top:8px;">
+        Pulls that company's actual aptitude, technical, and HR round questions.
+      </p>
+    </div>
+
+    <div class="mode-panel" data-mode="job">
+      <label for="job_description">Paste the job description</label>
+      <textarea name="job_description" id="job_description" placeholder="Paste the full JD here -- MockMate will extract the role and required skills."></textarea>
+    </div>
+
+    <label for="resume">Upload resume (optional, PDF or DOCX)</label>
+    <input type="file" name="resume" id="resume" accept=".pdf,.docx">
+    <p style="font-size:0.8rem; color:var(--text-dim); margin-top:6px;">
+      When uploaded, MockMate adds 2-3 questions tailored to your listed skills and projects.
+    </p>
+
+    <button type="submit" class="btn btn-primary btn-block">Enter the interview room →</button>
+  </form>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.mode-tab');
+  const panels = document.querySelectorAll('.mode-panel');
+  const modeInput = document.getElementById('mode-input');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      const mode = tab.dataset.mode;
+      document.querySelector(`.mode-panel[data-mode="${mode}"]`).classList.add('active');
+      modeInput.value = mode;
+    });
+  });
+</script>
+{% endblock %}

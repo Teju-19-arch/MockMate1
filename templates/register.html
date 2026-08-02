@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Create account · MockMate{% endblock %}
+
+{% block content %}
+<div class="auth-shell">
+  <span class="eyebrow">Get placement-ready</span>
+  <h1 style="font-size:1.9rem;">Create your account</h1>
+
+  <form method="POST">
+    <label for="name">Full name</label>
+    <input type="text" id="name" name="name" required>
+
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" required>
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required>
+
+    <div class="grid-2">
+      <div>
+        <label for="college">College</label>
+        <input type="text" id="college" name="college" placeholder="Optional">
+      </div>
+      <div>
+        <label for="branch">Branch</label>
+        <input type="text" id="branch" name="branch" placeholder="e.g. CSE">
+      </div>
+    </div>
+
+    <label for="target_role">Target role</label>
+    <input type="text" id="target_role" name="target_role" placeholder="e.g. SDE-1, Data Analyst">
+
+    <button type="submit" class="btn btn-primary btn-block">Create account</button>
+  </form>
+
+  <p style="margin-top:20px; font-size:0.9rem; color:var(--text-dim);">
+    Already have an account? <a href="{{ url_for('login') }}" style="color:var(--brass); font-weight:600;">Log in</a>
+  </p>
+</div>
+{% endblock %}
