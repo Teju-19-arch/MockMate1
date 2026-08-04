@@ -12,13 +12,17 @@ Run with: python app.py
 import os
 import json
 import uuid
+import webbrowser
+import threading
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
 
 import database
 from modules import resume_parser, job_parser, question_generator, speech_analyzer, facial_analyzer, report_generator
 from modules.question_bank import COMPANY_LIST
+from modules.technical.routes import technical_bp
 
 app = Flask(__name__)
+app.register_blueprint(technical_bp)
 app.secret_key = "mockmate-dev-secret-change-this-in-production"
 
 BASE_DIR = os.path.dirname(__file__)
@@ -211,4 +215,6 @@ def api_analyze(session_id):
 
 
 if __name__ == "__main__":
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not app.debug:
+        threading.Timer(1.25, lambda: webbrowser.open("http://127.0.0.1:5000")).start()
     app.run(debug=True, host="0.0.0.0", port=5000)

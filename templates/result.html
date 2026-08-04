@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+{% block title %}Exam Results · MockMate{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Assessment Performance Summary</span>
+<h1>Technical Round Results</h1>
+<p style="color:var(--text-dim); margin-bottom:24px;">Here is your detailed performance breakdown and grading evaluation.</p>
+
+<div class="grid-3" style="margin-bottom:32px;">
+  <div class="stat-tile">
+    <div class="stat-value">{{ result.score }} <span style="font-size:1rem;">/ {{ result.total_marks }}</span></div>
+    <div class="stat-label">Score</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-value">{{ result.accuracy_percentage }}<span style="font-size:1rem;">%</span></div>
+    <div class="stat-label">Percentage</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-value">
+      {% if result.analytics and result.analytics.time_analytics %}
+        {{ result.analytics.time_analytics.time_taken_formatted }}
+      {% else %}
+        {{ result.time_taken_seconds }}s
+      {% endif %}
+    </div>
+    <div class="stat-label">Time Taken</div>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-bottom:32px;">
+  <div class="card">
+    <h3>Score Details</h3>
+    <table class="history" style="margin-top:12px;">
+      <tbody>
+        <tr>
+          <td><strong>Total Questions</strong></td>
+          <td>{{ result.total_questions }}</td>
+        </tr>
+        <tr>
+          <td><strong>Correct Answers</strong></td>
+          <td><span class="score-pill score-high">{{ result.correct_count }}</span></td>
+        </tr>
+        <tr>
+          <td><strong>Wrong Answers</strong></td>
+          <td><span class="score-pill score-low">{{ result.total_questions - result.correct_count }}</span></td>
+        </tr>
+        <tr>
+          <td><strong>Score</strong></td>
+          <td><strong>{{ result.score }} / {{ result.total_marks }}</strong></td>
+        </tr>
+        <tr>
+          <td><strong>Percentage</strong></td>
+          <td><strong>{{ result.accuracy_percentage }}%</strong></td>
+        </tr>
+        <tr>
+          <td><strong>Time Taken</strong></td>
+          <td>
+            {% if result.analytics and result.analytics.time_analytics %}
+              {{ result.analytics.time_analytics.time_taken_formatted }} ({{ result.time_taken_seconds }} seconds)
+            {% else %}
+              {{ result.time_taken_seconds }} seconds
+            {% endif %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Readiness Feedback</h3>
+    {% if result.analytics %}
+      <div style="margin-top:12px;">
+        <p style="font-weight:600; font-size:1rem; color:var(--sage);">
+          Level: {{ result.analytics.readiness_level }}
+        </p>
+        <div class="feedback-box" style="margin-top:10px;">
+          {{ result.analytics.recommendation }}
+        </div>
+        {% if result.analytics.time_analytics %}
+          <p style="font-size:0.85rem; color:var(--text-dim); margin-top:12px;">
+            Pace: {{ result.analytics.time_analytics.pace_assessment }} (Avg {{ result.analytics.time_analytics.avg_seconds_per_question }}s / question)
+          </p>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% if result.question_reviews %}
+  <div class="card" style="margin-bottom:32px;">
+    <h3>Question Breakdown & Explanations</h3>
+    <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px;">
+      {% for q in result.question_reviews %}
+        <div style="padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--paper-2);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <strong>Question {{ loop.index }}</strong>
+            {% if q.is_correct %}
+              <span class="score-pill score-high">Correct</span>
+            {% else %}
+              <span class="score-pill score-low">Incorrect</span>
+            {% endif %}
+          </div>
+          <p style="margin-bottom:10px; font-weight:500;">{{ q.question_text }}</p>
+          <div style="font-size:0.9rem; color:var(--ink-2); margin-bottom:8px;">
+            <div>Your Answer: <strong>{{ q.user_answer or 'None' }}</strong></div>
+            <div>Correct Answer: <strong>{{ q.correct_option }}</strong></div>
+          </div>
+          {% if q.explanation %}
+            <div style="font-size:0.85rem; color:var(--text-dim); background:var(--paper); padding:10px; border-radius:6px; margin-top:8px;">
+              <strong>Explanation:</strong> {{ q.explanation }}
+            </div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endif %}
+
+<div style="display:flex; gap:16px;">
+  <a href="/technical" class="btn btn-primary">Retake Assessment</a>
+  <a href="/dashboard" class="btn btn-outline">Return to Dashboard</a>
+</div>
+{% endblock %}

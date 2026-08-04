@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Technical MCQ Assessment · MockMate{% endblock %}
+
+{% block content %}
+<span class="eyebrow">Technical Assessment</span>
+<h1>Technical Round Practice</h1>
+<p style="color:var(--text-dim); margin-bottom:24px;">Configure your technical interview test by choosing a specific domain or campus placement company.</p>
+
+<div class="card" style="max-width:720px;">
+  <div class="mode-tabs">
+    <div class="mode-tab active" data-mode="domain">Domain Wise</div>
+    <div class="mode-tab" data-mode="company">Company Placement Drive</div>
+  </div>
+
+  <form method="POST" action="/technical/start" id="technical-setup-form">
+    <input type="hidden" name="mode" id="mode-input" value="domain">
+
+    <div class="mode-panel active" data-mode="domain">
+      <label for="domain">Select Technical Domain</label>
+      <select name="domain" id="domain">
+        {% for d in domains %}
+          <option value="{{ d }}">{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="mode-panel" data-mode="company">
+      <label for="company">Target Company</label>
+      <select name="company" id="company">
+        <option value="">-- Select Company --</option>
+        {% for c in company_list %}
+          <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <label for="difficulty">Difficulty Level</label>
+    <select name="difficulty" id="difficulty">
+      <option value="Easy">Easy</option>
+      <option value="Medium" selected>Medium</option>
+      <option value="Hard">Hard</option>
+    </select>
+
+    <label for="question_count">Number of Questions</label>
+    <select name="question_count" id="question_count">
+      <option value="15" selected>15 Questions</option>
+    </select>
+
+    <button type="submit" class="btn btn-primary btn-block">Start Assessment →</button>
+  </form>
+</div>
+
+<script>
+  const tabs = document.querySelectorAll('.mode-tab');
+  const panels = document.querySelectorAll('.mode-panel');
+  const modeInput = document.getElementById('mode-input');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      tab.classList.add('active');
+      const mode = tab.dataset.mode;
+      document.querySelector(`.mode-panel[data-mode="${mode}"]`).classList.add('active');
+      modeInput.value = mode;
+      
+      const companySelect = document.getElementById('company');
+      const domainSelect = document.getElementById('domain');
+      if (mode === 'domain') {
+        companySelect.value = '';
+      }
+    });
+  });
+</script>
+{% endblock %}
