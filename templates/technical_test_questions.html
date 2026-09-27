@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        MockMate - Technical Test
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='technical_test.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<div class="technical-container">
+
+    <div class="technical-card">
+
+        <h1>
+            Technical Test
+        </h1>
+
+        <p class="subtitle">
+            Answer all the questions carefully.
+        </p>
+
+
+        <form
+            method="POST"
+            action="{{ url_for('submit_technical_test') }}"
+        >
+
+
+            {% for question in questions %}
+
+            <div class="question-card">
+
+                <h3>
+                    Question {{ loop.index }}
+                </h3>
+
+                <p class="question-text">
+                    {{ question }}
+                </p>
+
+
+                <textarea
+                    name="answer_{{ loop.index0 }}"
+                    placeholder="Write your answer here..."
+                    required
+                ></textarea>
+
+            </div>
+
+            {% endfor %}
+
+
+            <button
+                type="submit"
+                class="start-button"
+            >
+
+                Complete Technical Test
+
+            </button>
+
+
+        </form>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

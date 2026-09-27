@@ -14,12 +14,14 @@ import json
 import uuid
 import webbrowser
 import threading
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, flash
+from flask import Flask, render_template, request, session, redirect, url_for, flash, jsonify
+from modules.technical_evaluator import generate_report
 
 import database
 from modules import resume_parser, job_parser, question_generator, speech_analyzer, facial_analyzer, report_generator
 from modules.question_bank import COMPANY_LIST
 from modules.technical.routes import technical_bp
+
 
 app = Flask(__name__)
 app.register_blueprint(technical_bp)
@@ -30,6 +32,68 @@ TEMP_UPLOAD_DIR = os.path.join(BASE_DIR, "temp_uploads")
 os.makedirs(TEMP_UPLOAD_DIR, exist_ok=True)
 
 DOMAINS = ["AIML", "Web Development", "Data Science", "HR"]
+
+
+# ---------------------------------------------------------------------------
+# Technical Test Questions
+# ---------------------------------------------------------------------------
+
+TECHNICAL_QUESTIONS = {
+
+    "AIML": [
+        "What is overfitting in machine learning and how can it be reduced?",
+        "Explain the difference between supervised and unsupervised learning.",
+        "What is the difference between classification and regression?",
+        "Explain precision, recall and F1-score.",
+        "What is the purpose of training, validation and test datasets?",
+        "What is RAG and why is it useful in AI applications?"
+    ],
+
+    "Web Development": [
+        "What is a REST API?",
+        "What is the difference between frontend and backend development?",
+        "What is the purpose of a database in a web application?",
+        "What is authentication and authorization?",
+        "What is Docker and why is it used?",
+        "What is the difference between SQL and NoSQL?"
+    ],
+
+    "Data Science": [
+        "What is data preprocessing?",
+        "What is feature engineering?",
+        "What is cross-validation?",
+        "Explain precision and recall.",
+        "How do you handle missing values?",
+        "What is dimensionality reduction?"
+    ],
+
+    "HR": [
+        "What is the difference between a technical skill and a soft skill?",
+        "How would you explain a technical project to a non-technical person?",
+        "How do you approach solving a difficult technical problem?",
+        "How do you handle errors in a software application?",
+        "How do you test your solution before deployment?",
+        "What makes a software solution scalable?"
+    ]
+}
+
+
+CAMPUS_QUESTIONS = [
+
+    "Explain object-oriented programming.",
+
+    "What is the difference between a process and a thread?",
+
+    "What is normalization in DBMS?",
+
+    "What is a primary key and foreign key?",
+
+    "Explain stack and queue.",
+
+    "What is time complexity?"
+
+]
+
 
 database.init_db()
 
@@ -160,6 +224,153 @@ def new_interview():
         return redirect(url_for("interview_room", session_id=session_id))
 
     return render_template("new_interview.html", domains=DOMAINS, company_list=COMPANY_LIST)
+# ---------------------------------------------------------------------------
+# Technical Test
+# ---------------------------------------------------------------------------
+
+@app.route("/technical-test", methods=["GET", "POST"])
+@login_required
+def technical_test():
+
+    if request.method == "GET":
+        return render_template(
+            "technical_test.html"
+        )
+
+    test_type = request.form.get(
+        "test_type",
+        "general"
+    )
+
+    domain = request.form.get(
+        "domain",
+        "AIML"
+    )
+
+    job_description = request.form.get(
+        "job_description",
+        ""
+    )
+
+    # ---------------------------------------
+    # GENERAL DOMAIN
+    # ---------------------------------------
+
+    if test_type == "general":
+
+        questions = TECHNICAL_QUESTIONS.get(
+            domain,
+            TECHNICAL_QUESTIONS["AIML"]
+        )
+
+    # ---------------------------------------
+    # CAMPUS PLACEMENT
+    # ---------------------------------------
+
+    elif test_type == "campus":
+
+        questions = CAMPUS_QUESTIONS
+
+    # ---------------------------------------
+    # JOB DESCRIPTION
+    # ---------------------------------------
+
+    elif test_type == "job":
+
+        questions = [
+
+            "Explain an important technical skill required for this job.",
+
+            "Describe a technical problem you have solved.",
+
+            "Explain how you would design a solution for this role.",
+
+            "How would you test your technical solution?",
+
+            "How would you debug a production problem?",
+
+            "Explain one technical project relevant to this job."
+
+        ]
+
+    else:
+
+        questions = TECHNICAL_QUESTIONS["AIML"]
+
+
+    # Store the questions temporarily
+    # for the candidate's test session.
+
+    session["technical_questions"] = questions
+
+    session["technical_test_type"] = test_type
+
+    session["technical_domain"] = domain
+
+    session["technical_job_description"] = job_description
+
+
+    return render_template(
+        "technical_test_questions.html",
+        questions=questions
+    )
+
+
+@app.route(
+    "/technical-test/submit",
+    methods=["POST"]
+)
+@login_required
+def submit_technical_test():
+
+    questions = session.get(
+        "technical_questions",
+        []
+    )
+
+    if not questions:
+
+        flash(
+            "Technical test session not found.",
+            "error"
+        )
+
+        return redirect(
+            url_for("technical_test")
+        )
+
+
+    answers = []
+
+    for index in range(
+        len(questions)
+    ):
+
+        answer = request.form.get(
+            f"answer_{index}",
+            ""
+        )
+
+        answers.append(answer)
+
+
+    # Evaluate the complete test.
+
+    report = generate_report(
+        questions,
+        answers
+    )
+
+
+    # Store report in session temporarily.
+
+    session["technical_report"] = report
+
+
+    return render_template(
+        "technical_test_result.html",
+        report=report
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        MockMate - Technical Test Result
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='technical_test.css') }}"
+    >
+
+    <!-- Chart.js -->
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+
+<body>
+
+<div class="technical-container">
+
+    <div class="technical-card">
+
+        <h1>
+            Technical Test Result
+        </h1>
+
+
+        <!-- OVERALL SCORE -->
+
+        <div class="overall-score">
+
+            <p>
+                Overall Score
+            </p>
+
+            <strong>
+                {{ result.overall_score }}%
+            </strong>
+
+        </div>
+
+
+        <!-- PERFORMANCE GRAPH -->
+
+        <h2>
+            Performance Graph
+        </h2>
+
+
+        <div class="chart-container">
+
+            <canvas
+                id="performanceChart"
+            ></canvas>
+
+        </div>
+
+
+        <!-- SCORE DETAILS -->
+
+        <h2>
+            Performance Details
+        </h2>
+
+
+        <div class="score-grid">
+
+            <div class="score-box">
+
+                <span>
+                    Technical Accuracy
+                </span>
+
+                <strong>
+                    {{ report.technical_accuracy }}%
+                </strong>
+
+            </div>
+
+
+            <div class="score-box">
+
+                <span>
+                    Relevance
+                </span>
+
+                <strong>
+                    {{ report.relevance }}%
+                </strong>
+
+            </div>
+
+
+            <div class="score-box">
+
+                <span>
+                    Completeness
+                </span>
+
+                <strong>
+                    {{ report.completeness }}%
+                </strong>
+
+            </div>
+
+
+            <div class="score-box">
+
+                <span>
+                    Communication
+                </span>
+
+                <strong>
+                    {{ report.communication }}%
+                </strong>
+
+            </div>
+
+        </div>
+
+
+        <!-- QUESTION SCORES -->
+
+        <h2>
+            Question-wise Scores
+        </h2>
+
+
+        {% for item in report.questions %}
+
+        <div class="question-result">
+
+            <h3>
+                Question {{ item.question_number }}
+            </h3>
+
+            <p>
+                {{ item.question }}
+            </p>
+
+            <div class="question-score">
+
+                Score:
+                {{ item.overall_score }}%
+
+            </div>
+
+            <p>
+                {{ item.feedback }}
+            </p>
+
+        </div>
+
+        {% endfor %}
+
+
+        <!-- RECOMMENDATIONS -->
+
+        <h2>
+            Recommendations
+        </h2>
+
+
+        <ul>
+
+            {% for recommendation in report.recommendations %}
+
+            <li>
+                {{ recommendation }}
+            </li>
+
+            {% endfor %}
+
+        </ul>
+
+
+        <button
+            class="start-button"
+            onclick="window.print()"
+        >
+
+            Print / Save Report
+
+        </button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+const graphData = {
+
+    labels: [
+        "Technical Accuracy",
+        "Relevance",
+        "Completeness",
+        "Communication"
+    ],
+
+    datasets: [
+
+        {
+
+            label: "Score",
+
+            data: [
+                {{ report.technical_accuracy }},
+                {{ report.relevance }},
+                {{ report.completeness }},
+                {{ report.communication }}
+            ]
+
+        }
+
+    ]
+
+};
+
+
+const ctx =
+    document
+        .getElementById(
+            "performanceChart"
+        );
+
+
+new Chart(
+    ctx,
+    {
+
+        type: "bar",
+
+        data: graphData,
+
+        options: {
+
+            responsive: true,
+
+            scales: {
+
+                y: {
+
+                    beginAtZero: true,
+
+                    max: 100
+
+                }
+
+            }
+
+        }
+
+    }
+);
+
+</script>
+
+</body>
+
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        MockMate Technical Test
+    </title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='technical_test.css') }}"
+    >
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+    <div class="card">
+
+        <h1>
+            Technical Test
+        </h1>
+
+        <p>
+            Select the type of technical assessment.
+        </p>
+
+
+        <!-- ========================= -->
+        <!-- TEST TYPE -->
+        <!-- ========================= -->
+
+        <form
+            method="POST"
+            action="/technical-test"
+        >
+
+            <div class="test-types">
+
+                <label>
+
+                    <input
+                        type="radio"
+                        name="test_type"
+                        value="general"
+                        checked
+                    >
+
+                    General Domain
+
+                </label>
+
+
+                <label>
+
+                    <input
+                        type="radio"
+                        name="test_type"
+                        value="campus"
+                    >
+
+                    Campus Placement
+
+                </label>
+
+
+                <label>
+
+                    <input
+                        type="radio"
+                        name="test_type"
+                        value="job"
+                    >
+
+                    Job Description
+
+                </label>
+
+            </div>
+
+
+            <!-- ========================= -->
+            <!-- DOMAIN -->
+            <!-- ========================= -->
+
+            <label>
+                Select Domain
+            </label>
+
+            <select
+                name="domain"
+            >
+
+                <option value="AIML">
+                    AI / Machine Learning
+                </option>
+
+                <option value="Python">
+                    Python
+                </option>
+
+                <option value="Web Development">
+                    Web Development
+                </option>
+
+                <option value="Data Science">
+                    Data Science
+                </option>
+
+            </select>
+
+
+            <!-- ========================= -->
+            <!-- JOB DESCRIPTION -->
+            <!-- ========================= -->
+
+            <label>
+                Job Description
+            </label>
+
+            <textarea
+                name="job_description"
+                placeholder="Paste the job description here if applicable"
+            ></textarea>
+
+
+            <button
+                type="submit"
+            >
+                Start Technical Test
+            </button>
+
+        </form>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

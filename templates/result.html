@@ -1,123 +1,804 @@
 {% extends "base.html" %}
-{% block title %}Exam Results · MockMate{% endblock %}
+
+{% block title %}Technical Examination Report · MockMate{% endblock %}
 
 {% block content %}
-<span class="eyebrow">Assessment Performance Summary</span>
-<h1>Technical Round Results</h1>
-<p style="color:var(--text-dim); margin-bottom:24px;">Here is your detailed performance breakdown and grading evaluation.</p>
 
-<div class="grid-3" style="margin-bottom:32px;">
-  <div class="stat-tile">
-    <div class="stat-value">{{ result.score }} <span style="font-size:1rem;">/ {{ result.total_marks }}</span></div>
-    <div class="stat-label">Score</div>
-  </div>
-  <div class="stat-tile">
-    <div class="stat-value">{{ result.accuracy_percentage }}<span style="font-size:1rem;">%</span></div>
-    <div class="stat-label">Percentage</div>
-  </div>
-  <div class="stat-tile">
-    <div class="stat-value">
-      {% if result.analytics and result.analytics.time_analytics %}
-        {{ result.analytics.time_analytics.time_taken_formatted }}
-      {% else %}
-        {{ result.time_taken_seconds }}s
-      {% endif %}
-    </div>
-    <div class="stat-label">Time Taken</div>
-  </div>
-</div>
+<style>
+    .report-page {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 35px 20px 60px;
+        color: #17213f;
+    }
 
-<div class="grid-2" style="margin-bottom:32px;">
-  <div class="card">
-    <h3>Score Details</h3>
-    <table class="history" style="margin-top:12px;">
-      <tbody>
-        <tr>
-          <td><strong>Total Questions</strong></td>
-          <td>{{ result.total_questions }}</td>
-        </tr>
-        <tr>
-          <td><strong>Correct Answers</strong></td>
-          <td><span class="score-pill score-high">{{ result.correct_count }}</span></td>
-        </tr>
-        <tr>
-          <td><strong>Wrong Answers</strong></td>
-          <td><span class="score-pill score-low">{{ result.total_questions - result.correct_count }}</span></td>
-        </tr>
-        <tr>
-          <td><strong>Score</strong></td>
-          <td><strong>{{ result.score }} / {{ result.total_marks }}</strong></td>
-        </tr>
-        <tr>
-          <td><strong>Percentage</strong></td>
-          <td><strong>{{ result.accuracy_percentage }}%</strong></td>
-        </tr>
-        <tr>
-          <td><strong>Time Taken</strong></td>
-          <td>
-            {% if result.analytics and result.analytics.time_analytics %}
-              {{ result.analytics.time_analytics.time_taken_formatted }} ({{ result.time_taken_seconds }} seconds)
-            {% else %}
-              {{ result.time_taken_seconds }} seconds
-            {% endif %}
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+    .report-header {
+        border-top: 5px solid #d9a900;
+        padding-top: 25px;
+        margin-bottom: 30px;
+    }
 
-  <div class="card">
-    <h3>Readiness Feedback</h3>
-    {% if result.analytics %}
-      <div style="margin-top:12px;">
-        <p style="font-weight:600; font-size:1rem; color:var(--sage);">
-          Level: {{ result.analytics.readiness_level }}
+    .report-label {
+        color: #c49700;
+        font-size: 14px;
+        font-weight: 800;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+    }
+
+    .report-title {
+        font-size: 42px;
+        margin: 8px 0;
+        font-weight: 800;
+        color: #17213f;
+    }
+
+    .report-subtitle {
+        color: #667085;
+        font-size: 17px;
+    }
+
+    .candidate-box {
+        background: #f7f8fb;
+        border: 1px solid #dfe3ea;
+        border-radius: 12px;
+        padding: 22px;
+        margin-bottom: 28px;
+    }
+
+    .candidate-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+    }
+
+    .candidate-item span {
+        display: block;
+        color: #7b8497;
+        font-size: 13px;
+        margin-bottom: 6px;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+
+    .candidate-item strong {
+        font-size: 16px;
+        color: #17213f;
+    }
+
+    .score-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+        margin-bottom: 30px;
+    }
+
+    .score-card {
+        background: #17213f;
+        color: white;
+        border-radius: 14px;
+        padding: 25px;
+        min-height: 125px;
+    }
+
+    .score-card .value {
+        font-size: 34px;
+        font-weight: 800;
+        color: #f0c62e;
+        margin-bottom: 8px;
+    }
+
+    .score-card .label {
+        color: #d4d8e2;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .section {
+        background: white;
+        border: 1px solid #dfe3ea;
+        border-radius: 14px;
+        padding: 28px;
+        margin-bottom: 25px;
+        box-shadow: 0 5px 18px rgba(20, 30, 60, 0.05);
+    }
+
+    .section h2 {
+        margin-top: 0;
+        color: #17213f;
+        font-size: 25px;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 14px;
+    }
+
+    .evaluation-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+
+    .evaluation-item {
+        border: 1px solid #e2e5eb;
+        border-radius: 12px;
+        padding: 20px;
+    }
+
+    .evaluation-top {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-weight: 700;
+    }
+
+    .evaluation-value {
+        color: #c49700;
+    }
+
+    .progress {
+        width: 100%;
+        height: 12px;
+        background: #e9edf3;
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        height: 100%;
+        background: #d9a900;
+        border-radius: 20px;
+    }
+
+    .result-summary {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px;
+    }
+
+    .summary-item {
+        padding: 20px;
+        border-radius: 12px;
+        background: #f7f8fb;
+        text-align: center;
+    }
+
+    .summary-number {
+        font-size: 30px;
+        font-weight: 800;
+        color: #17213f;
+    }
+
+    .summary-label {
+        color: #667085;
+        margin-top: 5px;
+    }
+
+    .charts-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 25px;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 330px;
+    }
+
+    .question-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }
+
+    .question-table th,
+    .question-table td {
+        padding: 14px 12px;
+        border-bottom: 1px solid #e5e7eb;
+        text-align: left;
+    }
+
+    .question-table th {
+        background: #f5f6f9;
+        color: #17213f;
+        font-size: 14px;
+    }
+
+    .correct {
+        color: #16803c;
+        font-weight: 700;
+    }
+
+    .wrong {
+        color: #c62828;
+        font-weight: 700;
+    }
+
+    .unanswered {
+        color: #8a6d00;
+        font-weight: 700;
+    }
+
+    .recommendation {
+        background: #fffaf0;
+        border-left: 5px solid #d9a900;
+        padding: 18px;
+        margin-bottom: 12px;
+        border-radius: 8px;
+        color: #26324d;
+    }
+
+    .report-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #ddd;
+    }
+
+    .print-btn {
+        background: #17213f;
+        color: white;
+        border: none;
+        padding: 13px 22px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 700;
+    }
+
+    .print-btn:hover {
+        background: #25345d;
+    }
+
+    @media (max-width: 900px) {
+        .candidate-grid,
+        .score-grid,
+        .evaluation-grid,
+        .result-summary,
+        .charts-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .candidate-grid,
+        .score-grid,
+        .evaluation-grid,
+        .result-summary,
+        .charts-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .report-title {
+            font-size: 32px;
+        }
+    }
+
+    @media print {
+        .print-btn {
+            display: none;
+        }
+
+        .report-page {
+            max-width: 100%;
+        }
+
+        .section,
+        .score-card,
+        .candidate-box {
+            break-inside: avoid;
+        }
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% set total = result.get('total_questions', result.get('total', questions|length if questions is defined else 15)) %}
+{% set correct = result.get('correct_answers', result.get('correct', 0)) %}
+{% set wrong = result.get('wrong_answers', result.get('wrong', 0)) %}
+{% set unanswered = result.get('unanswered', total - correct - wrong) %}
+{% set percentage = result.get('percentage', (correct / total * 100 if total else 0)) %}
+{% set score = result.get('score', correct) %}
+{% set max_score = result.get('max_score', total * 10) %}
+
+{% set technical_accuracy = result.get('technical_accuracy', percentage) %}
+{% set relevance = result.get('relevance', percentage) %}
+{% set completeness = result.get('completeness', ((correct + wrong) / total * 100 if total else 0)) %}
+
+<div class="report-page">
+
+    <!-- HEADER -->
+    <div class="report-header">
+        <div class="report-label">MockMate · Examination Report</div>
+
+        <h1 class="report-title">
+            Technical Examination Report
+        </h1>
+
+        <p class="report-subtitle">
+            Official performance evaluation and question-wise assessment report
         </p>
-        <div class="feedback-box" style="margin-top:10px;">
-          {{ result.analytics.recommendation }}
-        </div>
-        {% if result.analytics.time_analytics %}
-          <p style="font-size:0.85rem; color:var(--text-dim); margin-top:12px;">
-            Pace: {{ result.analytics.time_analytics.pace_assessment }} (Avg {{ result.analytics.time_analytics.avg_seconds_per_question }}s / question)
-          </p>
-        {% endif %}
-      </div>
-    {% endif %}
-  </div>
-</div>
-
-{% if result.question_reviews %}
-  <div class="card" style="margin-bottom:32px;">
-    <h3>Question Breakdown & Explanations</h3>
-    <div style="display:flex; flex-direction:column; gap:16px; margin-top:16px;">
-      {% for q in result.question_reviews %}
-        <div style="padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--paper-2);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <strong>Question {{ loop.index }}</strong>
-            {% if q.is_correct %}
-              <span class="score-pill score-high">Correct</span>
-            {% else %}
-              <span class="score-pill score-low">Incorrect</span>
-            {% endif %}
-          </div>
-          <p style="margin-bottom:10px; font-weight:500;">{{ q.question_text }}</p>
-          <div style="font-size:0.9rem; color:var(--ink-2); margin-bottom:8px;">
-            <div>Your Answer: <strong>{{ q.user_answer or 'None' }}</strong></div>
-            <div>Correct Answer: <strong>{{ q.correct_option }}</strong></div>
-          </div>
-          {% if q.explanation %}
-            <div style="font-size:0.85rem; color:var(--text-dim); background:var(--paper); padding:10px; border-radius:6px; margin-top:8px;">
-              <strong>Explanation:</strong> {{ q.explanation }}
-            </div>
-          {% endif %}
-        </div>
-      {% endfor %}
     </div>
-  </div>
-{% endif %}
 
-<div style="display:flex; gap:16px;">
-  <a href="/technical" class="btn btn-primary">Retake Assessment</a>
-  <a href="/dashboard" class="btn btn-outline">Return to Dashboard</a>
+
+    <!-- CANDIDATE INFORMATION -->
+    <div class="candidate-box">
+
+        <div class="candidate-grid">
+
+            <div class="candidate-item">
+                <span>Candidate</span>
+                <strong>
+                    {{ user.name if user and user.name else "Candidate" }}
+                </strong>
+            </div>
+
+            <div class="candidate-item">
+                <span>Assessment</span>
+                <strong>Technical Round</strong>
+            </div>
+
+            <div class="candidate-item">
+                <span>Domain / Company</span>
+                <strong>
+                    {{ config.company or config.domain or "Technical Assessment" }}
+                </strong>
+            </div>
+
+            <div class="candidate-item">
+                <span>Difficulty</span>
+                <strong>
+                    {{ config.difficulty or "Medium" }}
+                </strong>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- MAIN SCORE CARDS -->
+    <div class="score-grid">
+
+        <div class="score-card">
+            <div class="value">
+                {{ score }} / {{ max_score }}
+            </div>
+            <div class="label">
+                Total Score
+            </div>
+        </div>
+
+        <div class="score-card">
+            <div class="value">
+                {{ "%.1f"|format(percentage) }}%
+            </div>
+            <div class="label">
+                Overall Percentage
+            </div>
+        </div>
+
+        <div class="score-card">
+            <div class="value">
+                {{ correct }}
+            </div>
+            <div class="label">
+                Correct Answers
+            </div>
+        </div>
+
+        <div class="score-card">
+            <div class="value">
+                {{ result.get('time_taken', result.get('elapsed_time', 'N/A')) }}
+            </div>
+            <div class="label">
+                Time Taken
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- PERFORMANCE EVALUATION -->
+    <div class="section">
+
+        <h2>Performance Evaluation</h2>
+
+        <div class="evaluation-grid">
+
+            <div class="evaluation-item">
+                <div class="evaluation-top">
+                    <span>Technical Accuracy</span>
+                    <span class="evaluation-value">
+                        {{ "%.1f"|format(technical_accuracy) }}%
+                    </span>
+                </div>
+
+                <div class="progress">
+                    <div class="progress-bar"
+                         style="width: {{ technical_accuracy }}%">
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="evaluation-item">
+                <div class="evaluation-top">
+                    <span>Relevance</span>
+                    <span class="evaluation-value">
+                        {{ "%.1f"|format(relevance) }}%
+                    </span>
+                </div>
+
+                <div class="progress">
+                    <div class="progress-bar"
+                         style="width: {{ relevance }}%">
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="evaluation-item">
+                <div class="evaluation-top">
+                    <span>Completeness</span>
+                    <span class="evaluation-value">
+                        {{ "%.1f"|format(completeness) }}%
+                    </span>
+                </div>
+
+                <div class="progress">
+                    <div class="progress-bar"
+                         style="width: {{ completeness }}%">
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ANSWER SUMMARY -->
+    <div class="section">
+
+        <h2>Examination Result</h2>
+
+        <div class="result-summary">
+
+            <div class="summary-item">
+                <div class="summary-number">
+                    {{ total }}
+                </div>
+                <div class="summary-label">
+                    Total Questions
+                </div>
+            </div>
+
+            <div class="summary-item">
+                <div class="summary-number correct">
+                    {{ correct }}
+                </div>
+                <div class="summary-label">
+                    Correct
+                </div>
+            </div>
+
+            <div class="summary-item">
+                <div class="summary-number wrong">
+                    {{ wrong }}
+                </div>
+                <div class="summary-label">
+                    Wrong
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- GRAPHS -->
+    <div class="section">
+
+        <h2>Performance Graphs</h2>
+
+        <div class="charts-grid">
+
+            <div class="chart-container">
+                <canvas id="evaluationChart"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="answerChart"></canvas>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- QUESTION WISE REPORT -->
+    <div class="section">
+
+        <h2>Question-Wise Evaluation</h2>
+
+        <table class="question-table">
+
+            <thead>
+                <tr>
+                    <th>Question</th>
+                    <th>Your Answer</th>
+                    <th>Correct Answer</th>
+                    <th>Result</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% set question_results = result.get('questions', result.get('question_results', [])) %}
+
+                {% if question_results %}
+
+                    {% for q in question_results %}
+
+                    <tr>
+
+                        <td>
+                            Question {{ loop.index }}
+                        </td>
+
+                        <td>
+                            {{ q.get('user_answer', q.get('answer', 'Not Answered')) }}
+                        </td>
+
+                        <td>
+                            {{ q.get('correct_answer', q.get('correct', 'N/A')) }}
+                        </td>
+
+                        <td>
+
+                            {% if q.get('is_correct', q.get('correct', False)) %}
+                                <span class="correct">Correct</span>
+                            {% elif q.get('user_answer', q.get('answer')) %}
+                                <span class="wrong">Wrong</span>
+                            {% else %}
+                                <span class="unanswered">Unanswered</span>
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                {% else %}
+
+                    <tr>
+                        <td colspan="4" style="text-align:center;">
+                            Question-wise evaluation data is not available.
+                        </td>
+                    </tr>
+
+                {% endif %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+
+    <!-- RECOMMENDATIONS -->
+    <div class="section">
+
+        <h2>Performance Recommendations</h2>
+
+        {% if result.get('recommendations') %}
+
+            {% for recommendation in result.get('recommendations') %}
+
+                <div class="recommendation">
+                    {{ recommendation }}
+                </div>
+
+            {% endfor %}
+
+        {% else %}
+
+            {% if percentage >= 80 %}
+
+                <div class="recommendation">
+                    Strong technical performance. Continue practicing advanced
+                    domain-specific problems and interview-level questions.
+                </div>
+
+            {% elif percentage >= 60 %}
+
+                <div class="recommendation">
+                    Good foundation. Strengthen weak technical areas and
+                    practice more domain-specific MCQs.
+                </div>
+
+            {% else %}
+
+                <div class="recommendation">
+                    Revise core concepts and practice additional technical
+                    MCQs before attempting advanced interview assessments.
+                </div>
+
+            {% endif %}
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- FINAL ASSESSMENT -->
+    <div class="section">
+
+        <h2>Final Assessment</h2>
+
+        <p>
+            <strong>Overall Performance:</strong>
+            {{ "%.1f"|format(percentage) }}%
+        </p>
+
+        {% if percentage >= 80 %}
+
+            <p>
+                The candidate demonstrated a strong understanding of the
+                assessed technical concepts.
+            </p>
+
+        {% elif percentage >= 60 %}
+
+            <p>
+                The candidate demonstrated a satisfactory understanding of
+                the assessed technical concepts, with some areas requiring
+                additional practice.
+            </p>
+
+        {% else %}
+
+            <p>
+                The candidate should strengthen fundamental technical concepts
+                and continue practicing domain-specific questions.
+            </p>
+
+        {% endif %}
+
+    </div>
+
+
+    <!-- FOOTER -->
+    <div class="report-footer">
+
+        <div>
+            <strong>MockMate</strong><br>
+            AI-Based Technical Interview Assessment
+        </div>
+
+        <button class="print-btn" onclick="window.print()">
+            Print / Save Report as PDF
+        </button>
+
+    </div>
+
 </div>
+
+
+<script>
+
+    // Evaluation percentage graph
+    const evaluationCanvas =
+        document.getElementById("evaluationChart");
+
+    new Chart(evaluationCanvas, {
+
+        type: "bar",
+
+        data: {
+            labels: [
+                "Technical Accuracy",
+                "Relevance",
+                "Completeness"
+            ],
+
+            datasets: [{
+                label: "Evaluation %",
+                data: [
+                    {{ technical_accuracy|round(1) }},
+                    {{ relevance|round(1) }},
+                    {{ completeness|round(1) }}
+                ]
+            }]
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            scales: {
+
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+
+                    ticks: {
+                        callback: function(value) {
+                            return value + "%";
+                        }
+                    }
+                }
+
+            },
+
+            plugins: {
+
+                title: {
+                    display: true,
+                    text: "Performance Evaluation (%)"
+                },
+
+                legend: {
+                    display: false
+                }
+
+            }
+
+        }
+
+    });
+
+
+    // Answer distribution graph
+    const answerCanvas =
+        document.getElementById("answerChart");
+
+    new Chart(answerCanvas, {
+
+        type: "doughnut",
+
+        data: {
+
+            labels: [
+                "Correct",
+                "Wrong",
+                "Unanswered"
+            ],
+
+            datasets: [{
+
+                data: [
+                    {{ correct }},
+                    {{ wrong }},
+                    {{ unanswered }}
+                ]
+
+            }]
+
+        },
+
+        options: {
+
+            responsive: true,
+
+            maintainAspectRatio: false,
+
+            plugins: {
+
+                title: {
+                    display: true,
+                    text: "Answer Distribution"
+                }
+
+            }
+
+        }
+
+    });
+
+</script>
+
 {% endblock %}
