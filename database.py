@@ -168,6 +168,62 @@ def save_report(session_id, question, analysis):
     conn.close()
 
 
+def get_session_reports(session_id):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM reports WHERE session_id = ? ORDER BY id", (session_id,))
+    rows = [dict(r) for r in cur.fetchall()]
+    conn.close()
+    return rows
+
+
+def get_session_summary(session_id):
+    """Aggregates every answer in one interview session into a single
+    overall report, shown once at the end of the interview instead of
+    per-question."""
+    reports = get_session_reports(session_id)
+    if not reports:
+        return {
+            "total_questions": 0,
+            "avg_overall": 0.0,
+            "avg_eye_contact": 0.0,
+            "avg_confidence": 0.0,
+            "avg_wpm": 0.0,
+            "total_filler_words": 0,
+            "total_pauses": 0,
+            "combined_feedback": [],
+            "per_question": [],
+        }
+
+    total = len(reports)
+    avg_overall = round(sum(r["overall_score"] for r in reports) / total, 1)
+    avg_eye = round(sum(r["eye_contact_score"] for r in reports) / total, 1)
+    avg_conf = round(sum(r["confidence_score"] for r in reports) / total, 1)
+    avg_wpm = round(sum(r["speaking_rate_wpm"] for r in reports) / total, 1)
+    total_filler = sum(r["filler_word_count"] for r in reports)
+    total_pauses = sum(r["pause_count"] for r in reports)
+
+    # De-duplicated list of feedback tips seen across all answers.
+    combined_feedback = []
+    for r in reports:
+        for tip in (r.get("feedback") or "").split(". "):
+            tip = tip.strip().rstrip(".")
+            if tip and tip not in combined_feedback:
+                combined_feedback.append(tip)
+
+    return {
+        "total_questions": total,
+        "avg_overall": avg_overall,
+        "avg_eye_contact": avg_eye,
+        "avg_confidence": avg_conf,
+        "avg_wpm": avg_wpm,
+        "total_filler_words": total_filler,
+        "total_pauses": total_pauses,
+        "combined_feedback": combined_feedback,
+        "per_question": reports,
+    }
+
+
 def get_user_progress(user_id):
     conn = get_connection()
     cur = conn.cursor()

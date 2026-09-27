@@ -51,27 +51,18 @@
       <button class="btn btn-outline" id="btn-replay">🔊 Replay question</button>
     </div>
 
-    <div class="result-panel" id="result-panel">
+       <div class="result-panel" id="result-panel">
       <div id="analyzing-msg" style="display:none; color:var(--text-dim); font-size:0.9rem;">
         <span class="loading-spinner" style="border-top-color:var(--ink); border-color:rgba(27,35,64,0.2);"></span>
         Analyzing your speech and expressions...
       </div>
       <div id="result-content" style="display:none;">
-        <div class="result-scores">
-          <div class="mini-score"><div class="val" id="score-overall">-</div><div class="lbl">Overall</div></div>
-          <div class="mini-score"><div class="val" id="score-eye">-</div><div class="lbl">Eye contact</div></div>
-          <div class="mini-score"><div class="val" id="score-conf">-</div><div class="lbl">Confidence</div></div>
-          <div class="mini-score"><div class="val" id="score-filler">-</div><div class="lbl">Filler words</div></div>
-          <div class="mini-score"><div class="val" id="score-wpm">-</div><div class="lbl">Pace (WPM)</div></div>
-        </div>
-        <div class="feedback-box" id="feedback-text"></div>
-        <div class="transcript-box" id="transcript-text"></div>
+        <div class="feedback-box" id="feedback-text">✓ Answer recorded.</div>
       </div>
     </div>
 
     <div style="margin-top:24px; text-align:right;">
       <button class="btn btn-outline" id="btn-next" style="display:none;">Next question →</button>
-      <a href="{{ url_for('dashboard') }}" class="btn btn-primary" id="btn-finish" style="display:none;">Finish & view dashboard</a>
     </div>
   </div>
 </div>

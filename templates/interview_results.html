@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Interview Results · MockMate{% endblock %}
+
+{% block content %}
+<span class="eyebrow">
+  {% if interview_session.company %}{{ interview_session.company }} placement drive
+  {% elif interview_session.job_title %}{{ interview_session.job_title }}
+  {% else %}{{ interview_session.domain }} domain
+  {% endif %}
+</span>
+<h1>Your overall interview report</h1>
+<p style="color:var(--text-dim); margin-bottom:32px;">
+  Based on all {{ summary.total_questions }} question{{ 's' if summary.total_questions != 1 else '' }} from this session.
+</p>
+
+{% if summary.total_questions == 0 %}
+  <div class="card">
+    <p style="color:var(--text-dim);">No answers were recorded in this session.</p>
+    <a href="{{ url_for('dashboard') }}" class="btn btn-primary" style="margin-top:12px;">Back to dashboard</a>
+  </div>
+{% else %}
+
+<div class="grid-3" style="margin-bottom:32px;">
+  <div class="stat-tile">
+    <div class="stat-value">{{ summary.avg_overall }}<span style="font-size:1rem;">/100</span></div>
+    <div class="stat-label">Overall score</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-value">{{ summary.avg_eye_contact }}<span style="font-size:1rem;">%</span></div>
+    <div class="stat-label">Average eye contact</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-value">{{ summary.avg_confidence }}<span style="font-size:1rem;">%</span></div>
+    <div class="stat-label">Average confidence</div>
+  </div>
+</div>
+
+<div class="grid-3" style="margin-bottom:32px;">
+  <div class="stat-tile">
+    <div class="stat-value">{{ summary.avg_wpm }}</div>
+    <div class="stat-label">Average pace (WPM)</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-value">{{ summary.total_filler_words }}</div>
+    <div class="stat-label">Total filler words</div>
+  </div>
+  <div class="stat-tile">
+    <div class="stat-value">{{ summary.total_pauses }}</div>
+    <div class="stat-label">Total long pauses</div>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:32px;">
+  <h3>Key feedback across your answers</h3>
+  {% if summary.combined_feedback %}
+    <ul style="margin-top:12px; padding-left:20px; color:var(--text-dim); font-size:0.95rem; line-height:1.7;">
+      {% for tip in summary.combined_feedback %}
+        <li>{{ tip }}.</li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p style="color:var(--text-dim); font-size:0.9rem;">No specific feedback generated.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h3>Question-by-question breakdown</h3>
+  <table class="history" style="margin-top:12px;">
+    <thead>
+      <tr>
+        <th>Question</th>
+        <th>Overall</th>
+        <th>Eye contact</th>
+        <th>Filler words</th>
+        <th>Pace (WPM)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in summary.per_question %}
+      <tr>
+        <td style="max-width:280px;">{{ r.question }}</td>
+        <td>
+          <span class="score-pill {% if r.overall_score >= 70 %}score-high{% elif r.overall_score >= 45 %}score-mid{% else %}score-low{% endif %}">
+            {{ r.overall_score }}
+          </span>
+        </td>
+        <td>{{ r.eye_contact_score }}%</td>
+        <td>{{ r.filler_word_count }}</td>
+        <td>{{ r.speaking_rate_wpm }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div style="margin-top:32px; text-align:right;">
+  <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Back to dashboard</a>
+</div>
+
+{% endif %}
+{% endblock %}
