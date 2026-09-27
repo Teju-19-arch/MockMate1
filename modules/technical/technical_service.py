@@ -1,113 +1,943 @@
 """
 modules/technical/technical_service.py
 ---------------------------------------
-Workflow Coordinator Service for Technical Interview Module.
-Orchestrates caching, prompt building, AI provider execution (Gemini/Mock),
-JSON schema validation, text formatting, and exam grading.
+
+Technical MCQ service for MockMate.
+
+Responsibilities:
+- Generate MCQs using Gemini
+- Personalize questions using resume text
+- Validate Gemini output
+- Normalize question structure
+- Cache questions when enabled
+- Grade submitted answers
 """
 
-import logging
+import hashlib
 from typing import List, Dict, Any
 
-from modules.technical.models import QuestionRequest, GradingResult
+import config
+
+from modules.technical.models import QuestionRequest
 from modules.technical.prompt_builder import PromptBuilder
 from modules.technical.gemini_provider import GeminiProvider
-from modules.technical.mock_provider import MockProvider
-from modules.technical.validator import QuestionValidator
-from modules.technical.formatter import QuestionFormatter
-from modules.technical.cache import question_cache
-from modules.technical.mcq_engine import MCQEngine
-
-logger = logging.getLogger("modules.technical.technical_service")
+from modules.technical.cache import QuestionCache
 
 
 class TechnicalService:
-    """
-    Central service class orchestrating technical interview workflows.
-    """
 
     def __init__(self):
-        self.gemini_provider = GeminiProvider()
-        self.mock_provider = MockProvider()
-
-    def generate_exam_questions(self, request: QuestionRequest) -> List[Dict[str, Any]]:
         """
-        Coordinates fetching, validating, formatting, and caching technical MCQs.
-
-        Flow:
-        1. Check QuestionCache for cached response.
-        2. Build LLM prompt via PromptBuilder.
-        3. Attempt generation via GeminiProvider; fallback to MockProvider on error.
-        4. Validate JSON structure via QuestionValidator.
-        5. Format and sanitize via QuestionFormatter.
-        6. Store result in QuestionCache.
-        7. Return sanitized question list.
+        Initialize the technical assessment service.
         """
-        logger.info(f"Generating technical exam questions: Mode={request.mode}, Domain={request.domain}, Company={request.company}, Difficulty={request.difficulty}")
 
-        # 1. Check Cache
-        cached = question_cache.get(request.company, request.domain, request.difficulty, request.count)
-        if cached and len(cached) == request.count:
-            logger.info("Serving questions from QuestionCache.")
-            return cached
+        self.provider = GeminiProvider()
 
-        # 2. Build Prompt
-        prompt = PromptBuilder.build_prompt(request)
+        self.cache = QuestionCache()
 
-        # 3. Attempt Gemini API Generation with Fallback to Mock Provider
-        raw_questions = None
-        if self.gemini_provider.api_key:
-            try:
-                raw_questions = self.gemini_provider.generate_questions(request, prompt)
-            except Exception as e:
-                logger.warning(f"GeminiProvider failed: {e}. Falling back to MockProvider.")
 
-        if not raw_questions:
-            raw_questions = self.mock_provider.generate_questions(request, prompt)
+    # ------------------------------------------------------------------
+    # Cache Key
+    # ------------------------------------------------------------------
 
-        # Ensure raw_questions has exactly request.count items
-        if raw_questions and len(raw_questions) < request.count:
-            logger.warning(f"Provider returned {len(raw_questions)} questions, expected {request.count}. Padding questions.")
-            padded = []
-            while len(padded) < request.count:
-                for q in raw_questions:
-                    if len(padded) >= request.count:
-                        break
-                    padded.append(q)
-            raw_questions = padded
-        elif raw_questions and len(raw_questions) > request.count:
-            raw_questions = raw_questions[:request.count]
-
-        # 4. Validate JSON Schema
-        validated = QuestionValidator.validate_question_list(raw_questions)
-
-        # 5. Format & Sanitize
-        formatted = QuestionFormatter.format_question_list(validated)
-
-        # 6. Store in Cache
-        question_cache.set(request.company, request.domain, request.difficulty, request.count, formatted)
-
-        return formatted
-
-    def grade_exam(
+    def _build_cache_key(
         self,
-        session_id: int,
-        questions: List[Dict[str, Any]],
-        user_answers: Dict[str, str],
-        elapsed_seconds: int,
-        time_limit_minutes: int = 10
-    ) -> GradingResult:
+        request: QuestionRequest,
+        resume_text: str = None
+    ) -> str:
         """
-        Delegates grading and metrics evaluation to MCQEngine.
+        Create a unique cache key.
+
+        Resume content is included so that different candidates
+        do not receive the same cached personalized questions.
         """
-        return MCQEngine.evaluate_exam(
-            session_id=session_id,
-            questions=questions,
-            user_answers=user_answers,
-            elapsed_seconds=elapsed_seconds,
-            total_time_limit_minutes=time_limit_minutes
+
+        resume_hash = ""
+
+        if resume_text:
+            resume_hash = hashlib.sha256(
+                resume_text.encode("utf-8")
+            ).hexdigest()
+
+        return "|".join(
+            [
+                str(request.mode or ""),
+                str(request.domain or ""),
+                str(request.company or ""),
+                str(request.difficulty or ""),
+                str(request.count),
+                resume_hash
+            ]
         )
 
 
+    # ------------------------------------------------------------------
+    # Normalize Question
+    # ------------------------------------------------------------------
+
+    def _normalize_question(
+        self,
+        question: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """
+        Normalize one Gemini-generated question.
+
+        Expected Gemini structure:
+
+        {
+            "question": "...",
+            "options": {
+                "A": "...",
+                "B": "...",
+                "C": "...",
+                "D": "..."
+            },
+            "correct_option": "A",
+            "explanation": "..."
+        }
+        """
+
+        if not isinstance(question, dict):
+            return None
+
+
+        question_text = str(
+            question.get(
+                "question",
+                ""
+            )
+        ).strip()
+
+
+        if not question_text:
+            return None
+
+
+        # --------------------------------------------------------------
+        # Get options
+        # --------------------------------------------------------------
+
+        options = question.get(
+            "options",
+            {}
+        )
+
+
+        if not isinstance(options, dict):
+            return None
+
+
+        normalized_options = {}
+
+        for letter in ["A", "B", "C", "D"]:
+
+            value = options.get(
+                letter
+            )
+
+            if value is None:
+
+                # Sometimes Gemini may return lowercase keys.
+                value = options.get(
+                    letter.lower()
+                )
+
+            if value is None:
+
+                return None
+
+            value = str(
+                value
+            ).strip()
+
+            if not value:
+
+                return None
+
+            normalized_options[letter] = value
+
+
+        # --------------------------------------------------------------
+        # Correct answer
+        # --------------------------------------------------------------
+
+        correct_option = (
+            question.get(
+                "correct_option"
+            )
+            or question.get(
+                "correct_answer"
+            )
+            or question.get(
+                "answer"
+            )
+        )
+
+
+        if correct_option is None:
+            return None
+
+
+        correct_option = str(
+            correct_option
+        ).strip().upper()
+
+
+        # Handle answers such as:
+        # "A)"
+        # "A."
+        # "Option A"
+
+        if correct_option.startswith("OPTION "):
+
+            correct_option = correct_option.replace(
+                "OPTION ",
+                ""
+            ).strip()
+
+
+        if correct_option.startswith("A"):
+
+            if correct_option in [
+                "A",
+                "A)",
+                "A."
+            ]:
+                correct_option = "A"
+
+        elif correct_option.startswith("B"):
+
+            if correct_option in [
+                "B",
+                "B)",
+                "B."
+            ]:
+                correct_option = "B"
+
+        elif correct_option.startswith("C"):
+
+            if correct_option in [
+                "C",
+                "C)",
+                "C."
+            ]:
+                correct_option = "C"
+
+        elif correct_option.startswith("D"):
+
+            if correct_option in [
+                "D",
+                "D)",
+                "D."
+            ]:
+                correct_option = "D"
+
+
+        if correct_option not in [
+            "A",
+            "B",
+            "C",
+            "D"
+        ]:
+
+            return None
+
+
+        # --------------------------------------------------------------
+        # Explanation
+        # --------------------------------------------------------------
+
+        explanation = str(
+            question.get(
+                "explanation",
+                ""
+            )
+        ).strip()
+
+
+        # --------------------------------------------------------------
+        # Return normalized question
+        # --------------------------------------------------------------
+
+        return {
+            "question": question_text,
+
+            "options": normalized_options,
+
+            "correct_option": correct_option,
+
+            "explanation": explanation
+        }
+
+
+    # ------------------------------------------------------------------
+    # Validate Questions
+    # ------------------------------------------------------------------
+
+    def _validate_questions(
+        self,
+        questions: Any,
+        expected_count: int
+    ) -> List[Dict[str, Any]]:
+        """
+        Validate and normalize Gemini output.
+
+        Invalid questions are removed.
+        """
+
+        if not isinstance(
+            questions,
+            list
+        ):
+
+            raise RuntimeError(
+                "Gemini returned an invalid question format."
+            )
+
+
+        valid_questions = []
+
+
+        for question in questions:
+
+            normalized = self._normalize_question(
+                question
+            )
+
+            if normalized:
+
+                valid_questions.append(
+                    normalized
+                )
+
+
+        if not valid_questions:
+
+            raise RuntimeError(
+                "Gemini returned no valid MCQ questions."
+            )
+
+
+        # --------------------------------------------------------------
+        # Remove duplicate questions
+        # --------------------------------------------------------------
+
+        unique_questions = []
+
+        seen = set()
+
+
+        for question in valid_questions:
+
+            key = question[
+                "question"
+            ].strip().lower()
+
+
+            if key in seen:
+
+                continue
+
+
+            seen.add(
+                key
+            )
+
+            unique_questions.append(
+                question
+            )
+
+
+        valid_questions = unique_questions
+
+
+        # --------------------------------------------------------------
+        # Limit to requested count
+        # --------------------------------------------------------------
+
+        if len(valid_questions) > expected_count:
+
+            valid_questions = valid_questions[
+                :expected_count
+            ]
+
+
+        return valid_questions
+
+
+    # ------------------------------------------------------------------
+    # Generate Exam Questions
+    # ------------------------------------------------------------------
+
+    def generate_exam_questions(
+        self,
+        request: QuestionRequest,
+        resume_text: str = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Generate personalized technical MCQs.
+
+        Questions are based on:
+        - Selected domain
+        - Selected company
+        - Difficulty
+        - Number of questions
+        - Uploaded resume
+        """
+
+        if request is None:
+
+            raise ValueError(
+                "Question request is required."
+            )
+
+
+        # --------------------------------------------------------------
+        # Validate count
+        # --------------------------------------------------------------
+
+        count = int(
+            request.count
+        )
+
+
+        if count < 1:
+
+            raise ValueError(
+                "Question count must be at least 1."
+            )
+
+
+        if count > 20:
+
+            raise ValueError(
+                "Question count cannot exceed 20."
+            )
+
+
+        # --------------------------------------------------------------
+        # Cache key
+        # --------------------------------------------------------------
+
+        cache_key = self._build_cache_key(
+            request,
+            resume_text
+        )
+
+
+        # --------------------------------------------------------------
+        # Cache
+        # --------------------------------------------------------------
+
+        if config.ENABLE_QUESTION_CACHE:
+
+            try:
+
+                cached = self.cache.get(
+                    cache_key
+                )
+
+                if cached:
+
+                    print(
+                        "[TECHNICAL SERVICE] "
+                        "Using cached questions."
+                    )
+
+                    return cached
+
+            except Exception as e:
+
+                print(
+                    "[TECHNICAL SERVICE] "
+                    f"Cache read failed: {e}"
+                )
+
+
+        # --------------------------------------------------------------
+        # Build prompt
+        # --------------------------------------------------------------
+
+        print(
+            "[TECHNICAL SERVICE] "
+            "Building personalized Gemini prompt..."
+        )
+
+
+        prompt = PromptBuilder.build_prompt(
+            request,
+            resume_text=resume_text
+        )
+
+
+        # --------------------------------------------------------------
+        # Generate questions
+        # --------------------------------------------------------------
+
+        print(
+            "[TECHNICAL SERVICE] "
+            "Calling Gemini..."
+        )
+
+
+        questions = self.provider.generate_questions(
+            request,
+            prompt
+        )
+
+
+        if not questions:
+
+            raise RuntimeError(
+                "Gemini did not generate any questions."
+            )
+
+
+        print(
+            "[TECHNICAL SERVICE] "
+            f"Gemini returned {len(questions)} questions."
+        )
+
+
+        # --------------------------------------------------------------
+        # Validate and normalize
+        # --------------------------------------------------------------
+
+        questions = self._validate_questions(
+            questions,
+            count
+        )
+
+
+        if not questions:
+
+            raise RuntimeError(
+                "No valid questions remained after validation."
+            )
+
+
+        # --------------------------------------------------------------
+        # Log count
+        # --------------------------------------------------------------
+
+        print(
+            "[TECHNICAL SERVICE] "
+            f"Valid questions: {len(questions)}"
+        )
+
+
+        if len(questions) != count:
+
+            print(
+                "[TECHNICAL SERVICE] WARNING: "
+                f"Requested {count}, "
+                f"but only {len(questions)} valid questions "
+                "were returned."
+            )
+
+
+        # --------------------------------------------------------------
+        # Cache
+        # --------------------------------------------------------------
+
+        if config.ENABLE_QUESTION_CACHE:
+
+            try:
+
+                self.cache.set(
+                    cache_key,
+                    questions
+                )
+
+            except Exception as e:
+
+                print(
+                    "[TECHNICAL SERVICE] "
+                    f"Cache write failed: {e}"
+                )
+
+
+        # --------------------------------------------------------------
+        # Resume status
+        # --------------------------------------------------------------
+
+        if resume_text:
+
+            print(
+                "[TECHNICAL SERVICE] "
+                "Resume personalization: ENABLED"
+            )
+
+            print(
+                "[TECHNICAL SERVICE] "
+                f"Resume characters: {len(resume_text)}"
+            )
+
+        else:
+
+            print(
+                "[TECHNICAL SERVICE] "
+                "Resume personalization: DISABLED"
+            )
+
+
+        print(
+            "[TECHNICAL SERVICE] "
+            "Question generation completed."
+        )
+
+
+        return questions
+
+
+    # ------------------------------------------------------------------
+    # Grade Exam
+    # ------------------------------------------------------------------
+
+    def grade_exam(
+        self,
+        session_id,
+        questions: List[Dict[str, Any]],
+        user_answers: Dict[str, Any],
+        elapsed_seconds: int,
+        time_limit_minutes: int = 10
+    ):
+        """
+        Grade the submitted technical assessment.
+
+        Returns the project's existing ExamResult object.
+        """
+
+        from modules.technical.models import ExamResult
+
+
+        if not questions:
+
+            raise ValueError(
+                "No questions available for grading."
+            )
+
+
+        total_questions = len(
+            questions
+        )
+
+
+        correct_answers = 0
+
+        wrong_answers = 0
+
+        unanswered = 0
+
+
+        question_results = []
+
+
+        # --------------------------------------------------------------
+        # Grade each question
+        # --------------------------------------------------------------
+
+        for index, question in enumerate(
+            questions
+        ):
+
+            question_number = index + 1
+
+
+            correct_option = str(
+                question.get(
+                    "correct_option",
+                    ""
+                )
+            ).strip().upper()
+
+
+            # ----------------------------------------------------------
+            # Find submitted answer
+            # ----------------------------------------------------------
+
+            selected_answer = None
+
+
+            possible_keys = [
+                f"q{question_number}",
+                str(question_number),
+                f"question_{question_number}",
+                f"answer_{question_number}"
+            ]
+
+
+            for key in possible_keys:
+
+                if key in user_answers:
+
+                    selected_answer = (
+                        user_answers.get(
+                            key
+                        )
+                    )
+
+                    break
+
+
+            if selected_answer is not None:
+
+                selected_answer = str(
+                    selected_answer
+                ).strip().upper()
+
+
+            # ----------------------------------------------------------
+            # Determine result
+            # ----------------------------------------------------------
+
+            if not selected_answer:
+
+                status = "unanswered"
+
+                unanswered += 1
+
+
+            elif selected_answer == correct_option:
+
+                status = "correct"
+
+                correct_answers += 1
+
+
+            else:
+
+                status = "wrong"
+
+                wrong_answers += 1
+
+
+            question_results.append(
+                {
+                    "question_number": question_number,
+
+                    "question": question.get(
+                        "question",
+                        ""
+                    ),
+
+                    "selected_answer": selected_answer,
+
+                    "correct_answer": correct_option,
+
+                    "status": status,
+
+                    "explanation": question.get(
+                        "explanation",
+                        ""
+                    )
+                }
+            )
+
+
+        # --------------------------------------------------------------
+        # Score
+        # --------------------------------------------------------------
+
+        score = correct_answers
+
+
+        percentage = 0.0
+
+
+        if total_questions:
+
+            percentage = (
+                correct_answers
+                / total_questions
+            ) * 100
+
+
+        percentage = round(
+            percentage,
+            2
+        )
+
+
+        # --------------------------------------------------------------
+        # Time
+        # --------------------------------------------------------------
+
+        elapsed_seconds = max(
+            0,
+            int(elapsed_seconds)
+        )
+
+
+        time_limit_seconds = (
+            time_limit_minutes * 60
+        )
+
+
+        time_exceeded = (
+            elapsed_seconds
+            > time_limit_seconds
+        )
+
+
+        minutes = elapsed_seconds // 60
+
+        seconds = elapsed_seconds % 60
+
+
+        time_taken = (
+            f"{minutes}m {seconds}s"
+        )
+
+
+        # --------------------------------------------------------------
+        # Performance
+        # --------------------------------------------------------------
+
+        if percentage >= 80:
+
+            performance = "Excellent"
+
+        elif percentage >= 60:
+
+            performance = "Good"
+
+        elif percentage >= 40:
+
+            performance = "Average"
+
+        else:
+
+            performance = "Needs Improvement"
+
+
+        # --------------------------------------------------------------
+        # Create ExamResult
+        # --------------------------------------------------------------
+
+        try:
+
+            result = ExamResult(
+                session_id=session_id,
+
+                total_questions=total_questions,
+
+                correct_answers=correct_answers,
+
+                wrong_answers=wrong_answers,
+
+                unanswered=unanswered,
+
+                score=score,
+
+                percentage=percentage,
+
+                elapsed_seconds=elapsed_seconds,
+
+                time_taken=time_taken,
+
+                time_limit_minutes=time_limit_minutes,
+
+                time_exceeded=time_exceeded,
+
+                performance=performance,
+
+                question_results=question_results
+            )
+
+
+        except TypeError:
+
+            # ----------------------------------------------------------
+            # Your existing models.py may have an older ExamResult
+            # definition. In that case create it using the core fields.
+            # ----------------------------------------------------------
+
+            result = ExamResult(
+                session_id=session_id,
+
+                total_questions=total_questions,
+
+                correct_answers=correct_answers,
+
+                wrong_answers=wrong_answers,
+
+                unanswered=unanswered,
+
+                score=score,
+
+                percentage=percentage,
+
+                elapsed_seconds=elapsed_seconds,
+
+                time_taken=time_taken,
+
+                time_limit_minutes=time_limit_minutes,
+
+                time_exceeded=time_exceeded
+            )
+
+
+            # Add extra information if the model permits it.
+
+            try:
+
+                result.performance = performance
+
+                result.question_results = (
+                    question_results
+                )
+
+            except Exception:
+
+                pass
+
+
+        # --------------------------------------------------------------
+        # Logging
+        # --------------------------------------------------------------
+
+        print(
+            "[TECHNICAL SERVICE] "
+            "Assessment graded."
+        )
+
+        print(
+            f"[TECHNICAL SERVICE] "
+            f"Total: {total_questions}"
+        )
+
+        print(
+            f"[TECHNICAL SERVICE] "
+            f"Correct: {correct_answers}"
+        )
+
+        print(
+            f"[TECHNICAL SERVICE] "
+            f"Wrong: {wrong_answers}"
+        )
+
+        print(
+            f"[TECHNICAL SERVICE] "
+            f"Unanswered: {unanswered}"
+        )
+
+        print(
+            f"[TECHNICAL SERVICE] "
+            f"Score: {percentage}%"
+        )
+
+        print(
+            f"[TECHNICAL SERVICE] "
+            f"Performance: {performance}"
+        )
+
+
+        return result
+
+
+# ----------------------------------------------------------------------
 # Global service instance
+# ----------------------------------------------------------------------
+
 technical_service = TechnicalService()

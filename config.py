@@ -19,7 +19,7 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 # ---------------------------------------------------------------------------
 # Reads Gemini API Key from environment variables (.env or system env)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
-GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-1.5-flash")
+GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-3.5-flash-lite")
 
 # ---------------------------------------------------------------------------
 # Retry & Resilience Settings
@@ -31,7 +31,7 @@ API_TIMEOUT_SECONDS = int(os.getenv("API_TIMEOUT_SECONDS", "15"))
 # ---------------------------------------------------------------------------
 # Caching Settings
 # ---------------------------------------------------------------------------
-ENABLE_QUESTION_CACHE = os.getenv("ENABLE_QUESTION_CACHE", "True").lower() in ("true", "1", "yes")
+ENABLE_QUESTION_CACHE = False
 CACHE_TTL_SECONDS = int(os.getenv("CACHE_TTL_SECONDS", "3600"))  # 1 hour cache TTL
 
 # ---------------------------------------------------------------------------

@@ -1,10 +1,3 @@
-"""
-modules/technical/gemini_provider.py
-------------------------------------
-Google Gemini API Provider implementation for MCQ Question Generation.
-Includes exponential retry logic, timeout handling, and JSON response extraction.
-"""
-
 import time
 import json
 import logging
@@ -18,75 +11,114 @@ logger = logging.getLogger("modules.technical.gemini_provider")
 
 
 class GeminiProvider(BaseAIProvider):
-    """
-    Concrete AI Provider integrating Google Gemini API for MCQ generation.
-    """
 
     def __init__(self, api_key: str = None, model_name: str = None):
+
         self.api_key = api_key or config.GEMINI_API_KEY
         self.model_name = model_name or config.GEMINI_MODEL_NAME
+
         self.max_retries = config.MAX_API_RETRIES
         self.retry_delay = config.RETRY_DELAY_SECONDS
+
+        self.client = None
         self._init_client()
 
     def _init_client(self):
-        """Initializes Google Generative AI client if API key is present."""
-        self.genai_client = None
-        if self.api_key:
-            try:
-                import google.generativeai as genai
-                genai.configure(api_key=self.api_key)
-                self.genai_client = genai.GenerativeModel(self.model_name)
-                logger.info(f"Gemini API Provider initialized with model: {self.model_name}")
-            except Exception as e:
-                logger.warning(f"Failed to configure google.generativeai client: {e}")
 
-    def generate_questions(self, request: QuestionRequest, prompt: str) -> List[Dict[str, Any]]:
-        """
-        Generates technical MCQ questions using Google Gemini API with retries.
-        """
-        if not self.genai_client:
-            raise RuntimeError("Gemini API key is missing or client is not configured.")
+        if not self.api_key:
+            logger.warning("Gemini API key is missing.")
+            return
+
+        try:
+            from google import genai
+
+            self.client = genai.Client(
+                api_key=self.api_key
+            )
+
+            logger.info(
+                f"Gemini client initialized: {self.model_name}"
+            )
+
+        except Exception as e:
+            logger.exception(
+                f"Gemini client initialization failed: {e}"
+            )
+
+    def generate_questions(
+        self,
+        request: QuestionRequest,
+        prompt: str
+    ) -> List[Dict[str, Any]]:
+
+        if not self.client:
+            raise RuntimeError(
+                "Gemini client is not initialized."
+            )
 
         last_exception = None
+
         for attempt in range(1, self.max_retries + 1):
+
             try:
-                logger.info(f"Invoking Gemini API (Attempt {attempt}/{self.max_retries})...")
-                
-                # Request JSON output from Gemini
-                generation_config = {
-                    "temperature": 0.7,
-                    "response_mime_type": "application/json",
-                }
-                
-                response = self.genai_client.generate_content(
-                    prompt,
-                    generation_config=generation_config
+
+                logger.info(
+                    f"Gemini request attempt "
+                    f"{attempt}/{self.max_retries}"
                 )
 
-                if response and response.text:
-                    raw_json = response.text.strip()
-                    parsed = json.loads(raw_json)
-                    
-                    # Ensure top-level list
-                    if isinstance(parsed, dict) and "questions" in parsed:
-                        questions_list = parsed["questions"]
-                    elif isinstance(parsed, list):
-                        questions_list = parsed
-                    else:
-                        questions_list = [parsed]
-                        
-                    logger.info(f"Gemini API returned {len(questions_list)} raw questions successfully.")
-                    return questions_list
+                from google.genai import types
+
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json"
+                    )
+                )
+
+                if not response or not response.text:
+                    raise RuntimeError(
+                        "Gemini returned an empty response."
+                    )
+
+                parsed = json.loads(response.text)
+
+                if isinstance(parsed, dict) and "questions" in parsed:
+                    questions = parsed["questions"]
+
+                elif isinstance(parsed, list):
+                    questions = parsed
+
                 else:
-                    raise ValueError("Received empty text response from Gemini API.")
+                    questions = [parsed]
+
+                logger.info(
+                    f"Gemini generated {len(questions)} questions."
+                )
+
+                return questions
 
             except Exception as e:
-                last_exception = e
-                logger.warning(f"Gemini API attempt {attempt} failed: {e}")
-                if attempt < self.max_retries:
-                    sleep_time = self.retry_delay * (2 ** (attempt - 1))
-                    logger.info(f"Retrying in {sleep_time} seconds...")
-                    time.sleep(sleep_time)
 
-        raise RuntimeError(f"Gemini API failed after {self.max_retries} attempts. Last error: {last_exception}")
+                last_exception = e
+
+                logger.warning(
+                    f"Gemini attempt {attempt} failed: {e}"
+                )
+
+                if attempt < self.max_retries:
+
+                    delay = self.retry_delay * (2 ** (attempt - 1))
+
+                    logger.info(
+                        f"Waiting {delay} seconds before retry..."
+                    )
+
+                    time.sleep(delay)
+
+        raise RuntimeError(
+            f"Gemini API failed after "
+            f"{self.max_retries} attempts. "
+            f"Last error: {last_exception}"
+        )

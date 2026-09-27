@@ -1,75 +1,475 @@
 {% extends "base.html" %}
+
 {% block title %}Technical MCQ Assessment · MockMate{% endblock %}
 
 {% block content %}
+
 <span class="eyebrow">Technical Assessment</span>
+
 <h1>Technical Round Practice</h1>
-<p style="color:var(--text-dim); margin-bottom:24px;">Configure your technical interview test by choosing a specific domain or campus placement company.</p>
+
+<p style="color:var(--text-dim); margin-bottom:24px;">
+  Configure your technical interview test by choosing a specific
+  domain or campus placement company.
+  Questions can be personalized using your resume if you choose to upload one.
+</p>
+
 
 <div class="card" style="max-width:720px;">
+
+  <!-- =========================================================
+       MODE TABS
+       ========================================================= -->
+
   <div class="mode-tabs">
-    <div class="mode-tab active" data-mode="domain">Domain Wise</div>
-    <div class="mode-tab" data-mode="company">Company Placement Drive</div>
+
+    <div
+      class="mode-tab active"
+      data-mode="domain">
+      Domain Wise
+    </div>
+
+    <div
+      class="mode-tab"
+      data-mode="company">
+      Company Placement Drive
+    </div>
+
   </div>
 
-  <form method="POST" action="/technical/start" id="technical-setup-form">
-    <input type="hidden" name="mode" id="mode-input" value="domain">
 
-    <div class="mode-panel active" data-mode="domain">
-      <label for="domain">Select Technical Domain</label>
-      <select name="domain" id="domain">
+  <!-- =========================================================
+       TECHNICAL ASSESSMENT FORM
+       ========================================================= -->
+
+  <form
+    method="POST"
+    action="/technical/start"
+    id="technical-setup-form"
+    enctype="multipart/form-data"
+  >
+
+    <!-- Hidden mode -->
+
+    <input
+      type="hidden"
+      name="mode"
+      id="mode-input"
+      value="domain"
+    >
+
+
+    <!-- =======================================================
+         DOMAIN MODE
+         ======================================================= -->
+
+    <div
+      class="mode-panel active"
+      data-mode="domain"
+    >
+
+      <label for="domain">
+        Select Technical Domain
+      </label>
+
+      <select
+        name="domain"
+        id="domain"
+      >
+
         {% for d in domains %}
-          <option value="{{ d }}">{{ d }}</option>
+
+          <option value="{{ d }}">
+            {{ d }}
+          </option>
+
         {% endfor %}
+
       </select>
+
     </div>
 
-    <div class="mode-panel" data-mode="company">
-      <label for="company">Target Company</label>
-      <select name="company" id="company">
-        <option value="">-- Select Company --</option>
+
+    <!-- =======================================================
+         COMPANY MODE
+         ======================================================= -->
+
+    <div
+      class="mode-panel"
+      data-mode="company"
+    >
+
+      <label for="company">
+        Target Company
+      </label>
+
+      <select
+        name="company"
+        id="company"
+      >
+
+        <option value="">
+          -- Select Company --
+        </option>
+
         {% for c in company_list %}
-          <option value="{{ c }}">{{ c }}</option>
+
+          <option value="{{ c }}">
+            {{ c }}
+          </option>
+
         {% endfor %}
+
       </select>
+
     </div>
 
-    <label for="difficulty">Difficulty Level</label>
-    <select name="difficulty" id="difficulty">
-      <option value="Easy">Easy</option>
-      <option value="Medium" selected>Medium</option>
-      <option value="Hard">Hard</option>
+
+    <!-- =======================================================
+         RESUME UPLOAD - OPTIONAL
+         ======================================================= -->
+
+    <label for="resume">
+
+      Upload Resume
+
+      <span
+        style="
+          color:var(--text-dim);
+          font-size:13px;
+          font-weight:normal;
+        "
+      >
+        (Optional · PDF or DOCX)
+      </span>
+
+    </label>
+
+
+    <input
+      type="file"
+      name="resume"
+      id="resume"
+      accept=".pdf,.docx"
+    >
+
+
+    <p
+      style="
+        color:var(--text-dim);
+        font-size:13px;
+        margin-top:6px;
+        margin-bottom:18px;
+      "
+    >
+
+      Resume upload is optional.
+      If you upload a resume, questions will be personalized
+      based on your skills, technologies, projects and experience.
+
+      If you continue without a resume, questions will be generated
+      using the selected domain or company and difficulty level.
+
+    </p>
+
+
+    <!-- =======================================================
+         DIFFICULTY
+         ======================================================= -->
+
+    <label for="difficulty">
+      Difficulty Level
+    </label>
+
+    <select
+      name="difficulty"
+      id="difficulty"
+    >
+
+      <option value="Easy">
+        Easy
+      </option>
+
+      <option
+        value="Medium"
+        selected
+      >
+        Medium
+      </option>
+
+      <option value="Hard">
+        Hard
+      </option>
+
     </select>
 
-    <label for="question_count">Number of Questions</label>
-    <select name="question_count" id="question_count">
-      <option value="15" selected>15 Questions</option>
+
+    <!-- =======================================================
+         QUESTION COUNT
+         ======================================================= -->
+
+    <label for="question_count">
+      Number of Questions
+    </label>
+
+    <select
+      name="question_count"
+      id="question_count"
+    >
+
+      <option
+        value="15"
+        selected
+      >
+        15 Questions
+      </option>
+
     </select>
 
-    <button type="submit" class="btn btn-primary btn-block">Start Assessment →</button>
+
+    <!-- =======================================================
+         START BUTTON
+         ======================================================= -->
+
+    <button
+      type="submit"
+      class="btn btn-primary btn-block"
+      id="start-assessment-btn"
+    >
+      Start Assessment →
+    </button>
+
   </form>
+
 </div>
 
+
+<!-- =========================================================
+     JAVASCRIPT
+     ========================================================= -->
+
 <script>
-  const tabs = document.querySelectorAll('.mode-tab');
-  const panels = document.querySelectorAll('.mode-panel');
-  const modeInput = document.getElementById('mode-input');
+
+  const tabs =
+    document.querySelectorAll('.mode-tab');
+
+  const panels =
+    document.querySelectorAll('.mode-panel');
+
+  const modeInput =
+    document.getElementById('mode-input');
+
+  const companySelect =
+    document.getElementById('company');
+
+  const domainSelect =
+    document.getElementById('domain');
+
+  const resumeInput =
+    document.getElementById('resume');
+
+  const form =
+    document.getElementById('technical-setup-form');
+
+  const startButton =
+    document.getElementById('start-assessment-btn');
+
+
+  /* =========================================================
+     TAB SWITCHING
+     ========================================================= */
 
   tabs.forEach(tab => {
+
     tab.addEventListener('click', () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      panels.forEach(p => p.classList.remove('active'));
+
+      /* Remove active state */
+
+      tabs.forEach(t => {
+        t.classList.remove('active');
+      });
+
+      panels.forEach(p => {
+        p.classList.remove('active');
+      });
+
+
+      /* Activate selected tab */
+
       tab.classList.add('active');
-      const mode = tab.dataset.mode;
-      document.querySelector(`.mode-panel[data-mode="${mode}"]`).classList.add('active');
-      modeInput.value = mode;
-      
-      const companySelect = document.getElementById('company');
-      const domainSelect = document.getElementById('domain');
-      if (mode === 'domain') {
-        companySelect.value = '';
+
+      const mode =
+        tab.dataset.mode;
+
+
+      const selectedPanel =
+        document.querySelector(
+          `.mode-panel[data-mode="${mode}"]`
+        );
+
+
+      if (selectedPanel) {
+        selectedPanel.classList.add('active');
       }
+
+
+      /* Update hidden mode */
+
+      modeInput.value = mode;
+
+
+      /* Clear opposite selection */
+
+      if (mode === 'domain') {
+
+        companySelect.value = '';
+
+      } else {
+
+        domainSelect.selectedIndex = 0;
+
+      }
+
     });
+
   });
+
+
+  /* =========================================================
+     OPTIONAL RESUME FILE VALIDATION
+     ========================================================= */
+
+  resumeInput.addEventListener(
+    'change',
+    () => {
+
+      const file =
+        resumeInput.files[0];
+
+
+      /*
+       * No file is completely valid because
+       * resume upload is optional.
+       */
+
+      if (!file) {
+        return;
+      }
+
+
+      const fileName =
+        file.name.toLowerCase();
+
+
+      const validPDF =
+        fileName.endsWith('.pdf');
+
+
+      const validDOCX =
+        fileName.endsWith('.docx');
+
+
+      /* Validate file type */
+
+      if (!validPDF && !validDOCX) {
+
+        alert(
+          'Please upload a PDF or DOCX resume.'
+        );
+
+        resumeInput.value = '';
+
+        return;
+      }
+
+
+      /* Maximum 5 MB */
+
+      const maxSize =
+        5 * 1024 * 1024;
+
+
+      if (file.size > maxSize) {
+
+        alert(
+          'Resume size must be less than 5 MB.'
+        );
+
+        resumeInput.value = '';
+
+        return;
+      }
+
+    }
+  );
+
+
+  /* =========================================================
+     FORM SUBMISSION
+     ========================================================= */
+
+  form.addEventListener(
+    'submit',
+    (event) => {
+
+
+      /*
+       * IMPORTANT:
+       *
+       * Resume validation has intentionally been removed.
+       *
+       * Resume is OPTIONAL.
+       */
+
+
+      /* Company validation */
+
+      if (
+        modeInput.value === 'company' &&
+        !companySelect.value
+      ) {
+
+        event.preventDefault();
+
+        alert(
+          'Please select a company.'
+        );
+
+        companySelect.focus();
+
+        return;
+      }
+
+
+      /* Domain validation */
+
+      if (
+        modeInput.value === 'domain' &&
+        !domainSelect.value
+      ) {
+
+        event.preventDefault();
+
+        alert(
+          'Please select a technical domain.'
+        );
+
+        domainSelect.focus();
+
+        return;
+      }
+
+
+      /* Prevent double submission */
+
+      startButton.disabled = true;
+
+      startButton.innerText =
+        'Generating Questions...';
+
+    }
+  );
+
 </script>
+
 {% endblock %}

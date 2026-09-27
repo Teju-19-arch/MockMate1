@@ -5,3 +5,4 @@ temp_uploads/
 .env
 .vscode/
 *.db
+.venv/
