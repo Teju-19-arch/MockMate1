@@ -5,6 +5,7 @@
 {% block content %}
 
 <style>
+
     .report-page {
         max-width: 1200px;
         margin: 0 auto;
@@ -38,6 +39,11 @@
         font-size: 17px;
     }
 
+
+    /* =========================================================
+       CANDIDATE INFORMATION
+       ========================================================= */
+
     .candidate-box {
         background: #f7f8fb;
         border: 1px solid #dfe3ea;
@@ -65,6 +71,11 @@
         font-size: 16px;
         color: #17213f;
     }
+
+
+    /* =========================================================
+       SCORE CARDS
+       ========================================================= */
 
     .score-grid {
         display: grid;
@@ -94,6 +105,11 @@
         font-weight: 600;
     }
 
+
+    /* =========================================================
+       SECTIONS
+       ========================================================= */
+
     .section {
         background: white;
         border: 1px solid #dfe3ea;
@@ -110,6 +126,11 @@
         border-bottom: 1px solid #e5e7eb;
         padding-bottom: 14px;
     }
+
+
+    /* =========================================================
+       PERFORMANCE EVALUATION
+       ========================================================= */
 
     .evaluation-grid {
         display: grid;
@@ -148,9 +169,14 @@
         border-radius: 20px;
     }
 
+
+    /* =========================================================
+       RESULT SUMMARY
+       ========================================================= */
+
     .result-summary {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(4, 1fr);
         gap: 18px;
     }
 
@@ -172,6 +198,11 @@
         margin-top: 5px;
     }
 
+
+    /* =========================================================
+       CHARTS
+       ========================================================= */
+
     .charts-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -182,6 +213,11 @@
         position: relative;
         height: 330px;
     }
+
+
+    /* =========================================================
+       QUESTION TABLE
+       ========================================================= */
 
     .question-table {
         width: 100%;
@@ -217,6 +253,11 @@
         font-weight: 700;
     }
 
+
+    /* =========================================================
+       RECOMMENDATION
+       ========================================================= */
+
     .recommendation {
         background: #fffaf0;
         border-left: 5px solid #d9a900;
@@ -225,6 +266,11 @@
         border-radius: 8px;
         color: #26324d;
     }
+
+
+    /* =========================================================
+       FOOTER
+       ========================================================= */
 
     .report-footer {
         display: flex;
@@ -249,7 +295,13 @@
         background: #25345d;
     }
 
+
+    /* =========================================================
+       RESPONSIVE
+       ========================================================= */
+
     @media (max-width: 900px) {
+
         .candidate-grid,
         .score-grid,
         .evaluation-grid,
@@ -257,9 +309,12 @@
         .charts-grid {
             grid-template-columns: 1fr 1fr;
         }
+
     }
 
+
     @media (max-width: 600px) {
+
         .candidate-grid,
         .score-grid,
         .evaluation-grid,
@@ -271,9 +326,20 @@
         .report-title {
             font-size: 32px;
         }
+
+        .question-table {
+            font-size: 13px;
+        }
+
     }
 
+
+    /* =========================================================
+       PRINT
+       ========================================================= */
+
     @media print {
+
         .print-btn {
             display: none;
         }
@@ -287,28 +353,112 @@
         .candidate-box {
             break-inside: avoid;
         }
+
     }
+
 </style>
+
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-{% set total = result.get('total_questions', result.get('total', questions|length if questions is defined else 15)) %}
-{% set correct = result.get('correct_answers', result.get('correct', 0)) %}
-{% set wrong = result.get('wrong_answers', result.get('wrong', 0)) %}
-{% set unanswered = result.get('unanswered', total - correct - wrong) %}
-{% set percentage = result.get('percentage', (correct / total * 100 if total else 0)) %}
-{% set score = result.get('score', correct) %}
-{% set max_score = result.get('max_score', total * 10) %}
 
-{% set technical_accuracy = result.get('technical_accuracy', percentage) %}
-{% set relevance = result.get('relevance', percentage) %}
-{% set completeness = result.get('completeness', ((correct + wrong) / total * 100 if total else 0)) %}
+{# ========================================================================
+   RESULT DATA
+   ======================================================================== #}
+
+{% set total = result.get('total_questions', 0) %}
+
+{% set correct = result.get('correct_count', 0) %}
+
+{% set score = result.get('score', 0) %}
+
+{% set max_score = result.get('total_marks', total * 10) %}
+
+{% set percentage = result.get('accuracy_percentage', 0) %}
+
+{% set question_reviews = result.get('question_reviews', []) %}
+
+{% set analytics = result.get('analytics', {}) %}
+
+{% set time_analytics = analytics.get('time_analytics', {}) %}
+
+
+{# ========================================================================
+   UNANSWERED COUNT
+   ======================================================================== #}
+
+{% set unanswered_namespace = namespace(count=0) %}
+
+{% for q in question_reviews %}
+
+    {% if not q.get('user_answer') %}
+
+        {% set unanswered_namespace.count =
+            unanswered_namespace.count + 1 %}
+
+    {% endif %}
+
+{% endfor %}
+
+{% set unanswered = unanswered_namespace.count %}
+
+
+{# ========================================================================
+   WRONG COUNT
+   ======================================================================== #}
+
+{% set wrong = total - correct - unanswered %}
+
+{% if wrong < 0 %}
+    {% set wrong = 0 %}
+{% endif %}
+
+
+{# ========================================================================
+   PERFORMANCE VALUES
+   ======================================================================== #}
+
+{% set technical_accuracy = percentage %}
+
+{% set relevance = percentage %}
+
+
+{% if total > 0 %}
+
+    {% set completeness =
+        ((total - unanswered) / total * 100) %}
+
+{% else %}
+
+    {% set completeness = 0 %}
+
+{% endif %}
+
+
+{# ========================================================================
+   TIME
+   ======================================================================== #}
+
+{% set time_taken =
+    time_analytics.get(
+        'time_taken_formatted',
+        result.get('time_taken_seconds', 'N/A')
+    )
+%}
+
 
 <div class="report-page">
 
-    <!-- HEADER -->
+
+    <!-- ================================================================
+         HEADER
+         ================================================================ -->
+
     <div class="report-header">
-        <div class="report-label">MockMate · Examination Report</div>
+
+        <div class="report-label">
+            MockMate · Examination Report
+        </div>
 
         <h1 class="report-title">
             Technical Examination Report
@@ -317,38 +467,67 @@
         <p class="report-subtitle">
             Official performance evaluation and question-wise assessment report
         </p>
+
     </div>
 
 
-    <!-- CANDIDATE INFORMATION -->
+    <!-- ================================================================
+         CANDIDATE INFORMATION
+         ================================================================ -->
+
     <div class="candidate-box">
 
         <div class="candidate-grid">
 
             <div class="candidate-item">
-                <span>Candidate</span>
+
+                <span>
+                    Candidate
+                </span>
+
                 <strong>
                     {{ user.name if user and user.name else "Candidate" }}
                 </strong>
+
             </div>
 
-            <div class="candidate-item">
-                <span>Assessment</span>
-                <strong>Technical Round</strong>
-            </div>
 
             <div class="candidate-item">
-                <span>Domain / Company</span>
+
+                <span>
+                    Assessment
+                </span>
+
+                <strong>
+                    Technical Round
+                </strong>
+
+            </div>
+
+
+            <div class="candidate-item">
+
+                <span>
+                    Domain / Company
+                </span>
+
                 <strong>
                     {{ config.company or config.domain or "Technical Assessment" }}
                 </strong>
+
             </div>
 
+
             <div class="candidate-item">
-                <span>Difficulty</span>
+
+                <span>
+                    Difficulty
+                </span>
+
                 <strong>
                     {{ config.difficulty or "Medium" }}
                 </strong>
+
             </div>
 
         </div>
@@ -356,100 +535,170 @@
     </div>
 
 
-    <!-- MAIN SCORE CARDS -->
+    <!-- ================================================================
+         MAIN SCORE CARDS
+         ================================================================ -->
+
     <div class="score-grid">
 
+
+        <!-- SCORE -->
+
         <div class="score-card">
+
             <div class="value">
                 {{ score }} / {{ max_score }}
             </div>
+
             <div class="label">
                 Total Score
             </div>
+
         </div>
 
+
+        <!-- PERCENTAGE -->
+
         <div class="score-card">
+
             <div class="value">
                 {{ "%.1f"|format(percentage) }}%
             </div>
+
             <div class="label">
                 Overall Percentage
             </div>
+
         </div>
 
+
+        <!-- CORRECT -->
+
         <div class="score-card">
+
             <div class="value">
                 {{ correct }}
             </div>
+
             <div class="label">
                 Correct Answers
             </div>
+
         </div>
 
+
+        <!-- TIME -->
+
         <div class="score-card">
+
             <div class="value">
-                {{ result.get('time_taken', result.get('elapsed_time', 'N/A')) }}
+                {{ time_taken }}
             </div>
+
             <div class="label">
                 Time Taken
             </div>
+
         </div>
 
     </div>
 
 
-    <!-- PERFORMANCE EVALUATION -->
+    <!-- ================================================================
+         PERFORMANCE EVALUATION
+         ================================================================ -->
+
     <div class="section">
 
-        <h2>Performance Evaluation</h2>
+        <h2>
+            Performance Evaluation
+        </h2>
+
 
         <div class="evaluation-grid">
 
+
+            <!-- TECHNICAL ACCURACY -->
+
             <div class="evaluation-item">
+
                 <div class="evaluation-top">
-                    <span>Technical Accuracy</span>
+
+                    <span>
+                        Technical Accuracy
+                    </span>
+
                     <span class="evaluation-value">
                         {{ "%.1f"|format(technical_accuracy) }}%
                     </span>
+
                 </div>
 
                 <div class="progress">
-                    <div class="progress-bar"
-                         style="width: {{ technical_accuracy }}%">
-                    </div>
+
+                    <div
+                        class="progress-bar"
+                        style="width: {{ technical_accuracy }}%"
+                    ></div>
+
                 </div>
+
             </div>
 
 
+            <!-- RELEVANCE -->
+
             <div class="evaluation-item">
+
                 <div class="evaluation-top">
-                    <span>Relevance</span>
+
+                    <span>
+                        Relevance
+                    </span>
+
                     <span class="evaluation-value">
                         {{ "%.1f"|format(relevance) }}%
                     </span>
+
                 </div>
 
                 <div class="progress">
-                    <div class="progress-bar"
-                         style="width: {{ relevance }}%">
-                    </div>
+
+                    <div
+                        class="progress-bar"
+                        style="width: {{ relevance }}%"
+                    ></div>
+
                 </div>
+
             </div>
 
 
+            <!-- COMPLETENESS -->
+
             <div class="evaluation-item">
+
                 <div class="evaluation-top">
-                    <span>Completeness</span>
+
+                    <span>
+                        Completeness
+                    </span>
+
                     <span class="evaluation-value">
                         {{ "%.1f"|format(completeness) }}%
                     </span>
+
                 </div>
 
                 <div class="progress">
-                    <div class="progress-bar"
-                         style="width: {{ completeness }}%">
-                    </div>
+
+                    <div
+                        class="progress-bar"
+                        style="width: {{ completeness }}%"
+                    ></div>
+
                 </div>
+
             </div>
 
         </div>
@@ -457,38 +706,69 @@
     </div>
 
 
-    <!-- ANSWER SUMMARY -->
+    <!-- ================================================================
+         ANSWER SUMMARY
+         ================================================================ -->
+
     <div class="section">
 
-        <h2>Examination Result</h2>
+        <h2>
+            Examination Result
+        </h2>
+
 
         <div class="result-summary">
 
+
             <div class="summary-item">
+
                 <div class="summary-number">
                     {{ total }}
                 </div>
+
                 <div class="summary-label">
                     Total Questions
                 </div>
+
             </div>
 
+
             <div class="summary-item">
+
                 <div class="summary-number correct">
                     {{ correct }}
                 </div>
+
                 <div class="summary-label">
                     Correct
                 </div>
+
             </div>
 
+
             <div class="summary-item">
+
                 <div class="summary-number wrong">
                     {{ wrong }}
                 </div>
+
                 <div class="summary-label">
                     Wrong
                 </div>
+
+            </div>
+
+
+            <div class="summary-item">
+
+                <div class="summary-number unanswered">
+                    {{ unanswered }}
+                </div>
+
+                <div class="summary-label">
+                    Unanswered
+                </div>
+
             </div>
 
         </div>
@@ -496,89 +776,164 @@
     </div>
 
 
-    <!-- GRAPHS -->
+    <!-- ================================================================
+         GRAPHS
+         ================================================================ -->
+
     <div class="section">
 
-        <h2>Performance Graphs</h2>
+        <h2>
+            Performance Graphs
+        </h2>
+
 
         <div class="charts-grid">
 
-            <div class="chart-container">
-                <canvas id="evaluationChart"></canvas>
-            </div>
 
             <div class="chart-container">
-                <canvas id="answerChart"></canvas>
+
+                <canvas id="evaluationChart"></canvas>
+
             </div>
+
+
+            <div class="chart-container">
+
+                <canvas id="answerChart"></canvas>
+
+            </div>
+
 
         </div>
 
     </div>
 
 
-    <!-- QUESTION WISE REPORT -->
+    <!-- ================================================================
+         QUESTION-WISE REPORT
+         ================================================================ -->
+
     <div class="section">
 
-        <h2>Question-Wise Evaluation</h2>
+        <h2>
+            Question-Wise Evaluation
+        </h2>
+
 
         <table class="question-table">
 
             <thead>
+
                 <tr>
-                    <th>Question</th>
-                    <th>Your Answer</th>
-                    <th>Correct Answer</th>
-                    <th>Result</th>
+
+                    <th>
+                        Question
+                    </th>
+
+                    <th>
+                        Your Answer
+                    </th>
+
+                    <th>
+                        Correct Answer
+                    </th>
+
+                    <th>
+                        Result
+                    </th>
+
                 </tr>
+
             </thead>
+
 
             <tbody>
 
-                {% set question_results = result.get('questions', result.get('question_results', [])) %}
 
-                {% if question_results %}
+                {% if question_reviews %}
 
-                    {% for q in question_results %}
+
+                    {% for q in question_reviews %}
 
                     <tr>
+
 
                         <td>
                             Question {{ loop.index }}
                         </td>
 
-                        <td>
-                            {{ q.get('user_answer', q.get('answer', 'Not Answered')) }}
-                        </td>
-
-                        <td>
-                            {{ q.get('correct_answer', q.get('correct', 'N/A')) }}
-                        </td>
 
                         <td>
 
-                            {% if q.get('is_correct', q.get('correct', False)) %}
-                                <span class="correct">Correct</span>
-                            {% elif q.get('user_answer', q.get('answer')) %}
-                                <span class="wrong">Wrong</span>
+                            {% if q.get('user_answer') %}
+
+                                {{ q.get('user_answer') }}
+
                             {% else %}
-                                <span class="unanswered">Unanswered</span>
+
+                                Not Answered
+
                             {% endif %}
 
                         </td>
+
+
+                        <td>
+                            {{ q.get('correct_option', 'N/A') }}
+                        </td>
+
+
+                        <td>
+
+
+                            {% if q.get('is_correct') %}
+
+                                <span class="correct">
+                                    Correct
+                                </span>
+
+
+                            {% elif q.get('user_answer') %}
+
+                                <span class="wrong">
+                                    Wrong
+                                </span>
+
+
+                            {% else %}
+
+                                <span class="unanswered">
+                                    Unanswered
+                                </span>
+
+                            {% endif %}
+
+
+                        </td>
+
 
                     </tr>
 
                     {% endfor %}
 
+
                 {% else %}
 
+
                     <tr>
-                        <td colspan="4" style="text-align:center;">
+
+                        <td
+                            colspan="4"
+                            style="text-align:center;"
+                        >
                             Question-wise evaluation data is not available.
                         </td>
+
                     </tr>
 
+
                 {% endif %}
+
 
             </tbody>
 
@@ -587,217 +942,366 @@
     </div>
 
 
-    <!-- RECOMMENDATIONS -->
+    <!-- ================================================================
+         RECOMMENDATIONS
+         ================================================================ -->
+
     <div class="section">
 
-        <h2>Performance Recommendations</h2>
+        <h2>
+            Performance Recommendations
+        </h2>
 
-        {% if result.get('recommendations') %}
-
-            {% for recommendation in result.get('recommendations') %}
-
-                <div class="recommendation">
-                    {{ recommendation }}
-                </div>
-
-            {% endfor %}
-
-        {% else %}
-
-            {% if percentage >= 80 %}
-
-                <div class="recommendation">
-                    Strong technical performance. Continue practicing advanced
-                    domain-specific problems and interview-level questions.
-                </div>
-
-            {% elif percentage >= 60 %}
-
-                <div class="recommendation">
-                    Good foundation. Strengthen weak technical areas and
-                    practice more domain-specific MCQs.
-                </div>
-
-            {% else %}
-
-                <div class="recommendation">
-                    Revise core concepts and practice additional technical
-                    MCQs before attempting advanced interview assessments.
-                </div>
-
-            {% endif %}
-
-        {% endif %}
-
-    </div>
-
-
-    <!-- FINAL ASSESSMENT -->
-    <div class="section">
-
-        <h2>Final Assessment</h2>
-
-        <p>
-            <strong>Overall Performance:</strong>
-            {{ "%.1f"|format(percentage) }}%
-        </p>
 
         {% if percentage >= 80 %}
 
-            <p>
-                The candidate demonstrated a strong understanding of the
-                assessed technical concepts.
-            </p>
+
+            <div class="recommendation">
+
+                Strong technical performance.
+
+                Continue practicing advanced
+                domain-specific problems and
+                interview-level questions.
+
+            </div>
+
 
         {% elif percentage >= 60 %}
 
-            <p>
-                The candidate demonstrated a satisfactory understanding of
-                the assessed technical concepts, with some areas requiring
-                additional practice.
-            </p>
+
+            <div class="recommendation">
+
+                Good foundation.
+
+                Strengthen weak technical areas
+                and practice more domain-specific MCQs.
+
+            </div>
+
 
         {% else %}
 
-            <p>
-                The candidate should strengthen fundamental technical concepts
-                and continue practicing domain-specific questions.
-            </p>
+
+            <div class="recommendation">
+
+                Revise core concepts and practice
+                additional technical MCQs before
+                attempting advanced interview assessments.
+
+            </div>
+
+
+        {% endif %}
+
+
+        {% if time_analytics.get('pace_assessment') %}
+
+            <div class="recommendation">
+
+                <strong>
+                    Time Management:
+                </strong>
+
+                {{ time_analytics.get('pace_assessment') }}
+
+            </div>
+
+        {% endif %}
+
+
+        {% if analytics.get('recommendation') %}
+
+            <div class="recommendation">
+
+                <strong>
+                    Recommendation:
+                </strong>
+
+                {{ analytics.get('recommendation') }}
+
+            </div>
 
         {% endif %}
 
     </div>
 
 
-    <!-- FOOTER -->
+    <!-- ================================================================
+         FINAL ASSESSMENT
+         ================================================================ -->
+
+    <div class="section">
+
+        <h2>
+            Final Assessment
+        </h2>
+
+
+        <p>
+
+            <strong>
+                Overall Performance:
+            </strong>
+
+            {{ "%.1f"|format(percentage) }}%
+
+        </p>
+
+
+        {% if percentage >= 80 %}
+
+
+            <p>
+
+                The candidate demonstrated a strong
+                understanding of the assessed
+                technical concepts.
+
+            </p>
+
+
+        {% elif percentage >= 60 %}
+
+
+            <p>
+
+                The candidate demonstrated a
+                satisfactory understanding of the
+                assessed technical concepts, with
+                some areas requiring additional practice.
+
+            </p>
+
+
+        {% else %}
+
+
+            <p>
+
+                The candidate should strengthen
+                fundamental technical concepts and
+                continue practicing domain-specific
+                questions.
+
+            </p>
+
+
+        {% endif %}
+
+
+    </div>
+
+
+    <!-- ================================================================
+         FOOTER
+         ================================================================ -->
+
     <div class="report-footer">
 
+
         <div>
-            <strong>MockMate</strong><br>
+
+            <strong>
+                MockMate
+            </strong>
+
+            <br>
+
             AI-Based Technical Interview Assessment
+
         </div>
 
-        <button class="print-btn" onclick="window.print()">
+
+        <button
+            class="print-btn"
+            onclick="window.print()"
+        >
             Print / Save Report as PDF
         </button>
 
+
     </div>
+
 
 </div>
 
 
+<!-- ====================================================================
+     CHARTS
+     ==================================================================== -->
+
 <script>
 
-    // Evaluation percentage graph
+    /* ============================================================
+       PERFORMANCE EVALUATION CHART
+       ============================================================ */
+
     const evaluationCanvas =
-        document.getElementById("evaluationChart");
+        document.getElementById(
+            "evaluationChart"
+        );
 
-    new Chart(evaluationCanvas, {
 
-        type: "bar",
+    new Chart(
+        evaluationCanvas,
+        {
 
-        data: {
-            labels: [
-                "Technical Accuracy",
-                "Relevance",
-                "Completeness"
-            ],
+            type: "bar",
 
-            datasets: [{
-                label: "Evaluation %",
-                data: [
-                    {{ technical_accuracy|round(1) }},
-                    {{ relevance|round(1) }},
-                    {{ completeness|round(1) }}
-                ]
-            }]
-        },
+            data: {
 
-        options: {
+                labels: [
+                    "Technical Accuracy",
+                    "Relevance",
+                    "Completeness"
+                ],
 
-            responsive: true,
+                datasets: [
 
-            maintainAspectRatio: false,
+                    {
 
-            scales: {
+                        label: "Evaluation %",
 
-                y: {
-                    beginAtZero: true,
-                    max: 100,
+                        data: [
 
-                    ticks: {
-                        callback: function(value) {
-                            return value + "%";
-                        }
+                            {{ technical_accuracy|round(1) }},
+
+                            {{ relevance|round(1) }},
+
+                            {{ completeness|round(1) }}
+
+                        ]
+
                     }
-                }
+
+                ]
 
             },
 
-            plugins: {
 
-                title: {
-                    display: true,
-                    text: "Performance Evaluation (%)"
+            options: {
+
+                responsive: true,
+
+                maintainAspectRatio: false,
+
+                scales: {
+
+                    y: {
+
+                        beginAtZero: true,
+
+                        max: 100,
+
+                        ticks: {
+
+                            callback: function(value) {
+
+                                return value + "%";
+
+                            }
+
+                        }
+
+                    }
+
                 },
 
-                legend: {
-                    display: false
+
+                plugins: {
+
+                    title: {
+
+                        display: true,
+
+                        text:
+                            "Performance Evaluation (%)"
+
+                    },
+
+                    legend: {
+
+                        display: false
+
+                    }
+
                 }
 
             }
 
         }
+    );
 
-    });
 
+    /* ============================================================
+       ANSWER DISTRIBUTION CHART
+       ============================================================ */
 
-    // Answer distribution graph
     const answerCanvas =
-        document.getElementById("answerChart");
+        document.getElementById(
+            "answerChart"
+        );
 
-    new Chart(answerCanvas, {
 
-        type: "doughnut",
+    new Chart(
+        answerCanvas,
+        {
 
-        data: {
+            type: "doughnut",
 
-            labels: [
-                "Correct",
-                "Wrong",
-                "Unanswered"
-            ],
+            data: {
 
-            datasets: [{
+                labels: [
+                    "Correct",
+                    "Wrong",
+                    "Unanswered"
+                ],
 
-                data: [
-                    {{ correct }},
-                    {{ wrong }},
-                    {{ unanswered }}
+                datasets: [
+
+                    {
+
+                        data: [
+
+                            {{ correct }},
+
+                            {{ wrong }},
+
+                            {{ unanswered }}
+
+                        ]
+
+                    }
+
                 ]
 
-            }]
+            },
 
-        },
 
-        options: {
+            options: {
 
-            responsive: true,
+                responsive: true,
 
-            maintainAspectRatio: false,
+                maintainAspectRatio: false,
 
-            plugins: {
+                plugins: {
 
-                title: {
-                    display: true,
-                    text: "Answer Distribution"
+                    title: {
+
+                        display: true,
+
+                        text:
+                            "Answer Distribution"
+
+                    }
+
                 }
 
             }
 
         }
-
-    });
+    );
 
 </script>
 

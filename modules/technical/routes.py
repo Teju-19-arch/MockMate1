@@ -1,7 +1,6 @@
 """
 modules/technical/routes.py
 ---------------------------
-
 Flask Blueprint for the Technical MCQ Interview Module.
 
 Features:
@@ -11,6 +10,7 @@ Features:
 - PDF/DOCX resume extraction
 - Resume-personalized Gemini questions
 - Server-side assessment storage
+- Server-side result storage
 - MCQ rendering
 - Answer submission
 - Result display
@@ -47,17 +47,19 @@ technical_bp = Blueprint(
 
 
 # ============================================================================
-# SERVER-SIDE ASSESSMENT STORAGE
+# SERVER-SIDE STORAGE
 # ============================================================================
 
 """
-The questions and resume text are stored here instead of inside
-the Flask session.
+Questions, resume text and results are stored on the server
+instead of inside the Flask session.
 
-This prevents the Flask session cookie from becoming too large.
+This prevents the browser session cookie from becoming too large.
 """
 
 TECHNICAL_ASSESSMENTS = {}
+
+TECHNICAL_RESULTS = {}
 
 
 # ============================================================================
@@ -119,7 +121,7 @@ def index():
 def start():
 
     # ------------------------------------------------------------------------
-    # Remove old technical assessment information
+    # Remove old technical session information
     # ------------------------------------------------------------------------
 
     session.pop(
@@ -149,6 +151,11 @@ def start():
 
     session.pop(
         "technical_result_config",
+        None
+    )
+
+    session.pop(
+        "technical_result_id",
         None
     )
 
@@ -232,7 +239,6 @@ def start():
                 )
             )
 
-        # Company mode does not use domain.
         domain = ""
 
     else:
@@ -252,7 +258,6 @@ def start():
                 )
             )
 
-        # Domain mode does not use company.
         company = ""
 
 
@@ -269,12 +274,6 @@ def start():
     resume_filename = None
 
 
-    # ------------------------------------------------------------------------
-    # If a resume was uploaded, process it.
-    #
-    # If no resume was uploaded, simply continue.
-    # ------------------------------------------------------------------------
-
     if resume_file and resume_file.filename:
 
         resume_filename = (
@@ -289,7 +288,6 @@ def start():
             f"[TECHNICAL] Resume filename: "
             f"{resume_filename}"
         )
-
 
         try:
 
@@ -412,7 +410,7 @@ def start():
     )
 
     print(
-        f"[TECHNICAL] Resume provided: "
+        "[TECHNICAL] Resume provided: "
         f"{'YES' if resume_text else 'NO'}"
     )
 
@@ -427,9 +425,11 @@ def start():
 
     try:
 
-        questions = technical_service.generate_exam_questions(
-            req,
-            resume_text=resume_text
+        questions = (
+            technical_service.generate_exam_questions(
+                req,
+                resume_text=resume_text
+            )
         )
 
     except Exception as e:
@@ -551,11 +551,9 @@ def start():
         "technical_assessment_id"
     ] = assessment_id
 
-
     session[
         "technical_start_time"
     ] = time.time()
-
 
     session.modified = True
 
@@ -579,7 +577,7 @@ def start():
     )
 
     print(
-        f"[TECHNICAL] Resume personalization: "
+        "[TECHNICAL] Resume personalization: "
         f"{'ENABLED' if resume_text else 'DISABLED'}"
     )
 
@@ -608,7 +606,6 @@ def mcq():
     assessment_id = session.get(
         "technical_assessment_id"
     )
-
 
     print(
         "[TECHNICAL] MCQ requested."
@@ -740,6 +737,11 @@ def submit():
 
     if not assessment_id:
 
+        print(
+            "[TECHNICAL] ERROR: "
+            "No technical assessment ID."
+        )
+
         return redirect(
             url_for(
                 "technical.index"
@@ -757,6 +759,11 @@ def submit():
 
 
     if not assessment:
+
+        print(
+            "[TECHNICAL] ERROR: "
+            "Technical assessment not found."
+        )
 
         return redirect(
             url_for(
@@ -776,6 +783,11 @@ def submit():
 
 
     if not questions:
+
+        print(
+            "[TECHNICAL] ERROR: "
+            "Assessment contains no questions."
+        )
 
         return redirect(
             url_for(
@@ -838,18 +850,20 @@ def submit():
 
     try:
 
-        grading_result = technical_service.grade_exam(
+        grading_result = (
+            technical_service.grade_exam(
 
-            session_id=session_id,
+                session_id=session_id,
 
-            questions=questions,
+                questions=questions,
 
-            user_answers=user_answers,
+                user_answers=user_answers,
 
-            elapsed_seconds=elapsed_seconds,
+                elapsed_seconds=elapsed_seconds,
 
-            time_limit_minutes=10
+                time_limit_minutes=10
 
+            )
         )
 
     except Exception as e:
@@ -886,8 +900,10 @@ def submit():
 
     except AttributeError:
 
-        # Fallback if the result object does not
-        # have a to_dict() method.
+        print(
+            "[TECHNICAL] WARNING: "
+            "GradingResult does not have to_dict()."
+        )
 
         result_data = {
 
@@ -899,21 +915,9 @@ def submit():
                 len(questions)
             ),
 
-            "correct_answers": getattr(
+            "correct_count": getattr(
                 grading_result,
-                "correct_answers",
-                0
-            ),
-
-            "wrong_answers": getattr(
-                grading_result,
-                "wrong_answers",
-                0
-            ),
-
-            "unanswered": getattr(
-                grading_result,
-                "unanswered",
+                "correct_count",
                 0
             ),
 
@@ -923,85 +927,118 @@ def submit():
                 0
             ),
 
-            "percentage": getattr(
+            "total_marks": getattr(
                 grading_result,
-                "percentage",
+                "total_marks",
+                len(questions) * 10
+            ),
+
+            "accuracy_percentage": getattr(
+                grading_result,
+                "accuracy_percentage",
                 0
             ),
 
-            "elapsed_seconds": getattr(
+            "time_taken_seconds": getattr(
                 grading_result,
-                "elapsed_seconds",
+                "time_taken_seconds",
                 elapsed_seconds
             ),
 
-            "time_taken": getattr(
+            "analytics": getattr(
                 grading_result,
-                "time_taken",
-                ""
+                "analytics",
+                {}
             ),
 
-            "time_limit_minutes": getattr(
+            "question_reviews": getattr(
                 grading_result,
-                "time_limit_minutes",
-                10
-            ),
-
-            "time_exceeded": getattr(
-                grading_result,
-                "time_exceeded",
-                False
+                "question_reviews",
+                []
             )
 
         }
 
 
-    # ------------------------------------------------------------------------
-    # Store result in session
-    # ------------------------------------------------------------------------
+    # ========================================================================
+    # STORE RESULT SERVER-SIDE
+    # ========================================================================
 
-    session[
-        "technical_result"
-    ] = result_data
+    result_id = str(
+        uuid.uuid4()
+    )
 
 
-    # ------------------------------------------------------------------------
-    # Store small configuration
-    # ------------------------------------------------------------------------
-
-    session[
-        "technical_result_config"
+    TECHNICAL_RESULTS[
+        result_id
     ] = {
 
-        "mode": assessment_config.get(
-            "mode"
-        ),
+        "result": result_data,
 
-        "company": assessment_config.get(
-            "company"
-        ),
+        "config": {
 
-        "domain": assessment_config.get(
-            "domain"
-        ),
+            "mode": assessment_config.get(
+                "mode"
+            ),
 
-        "difficulty": assessment_config.get(
-            "difficulty"
-        ),
+            "company": assessment_config.get(
+                "company"
+            ),
 
-        "count": assessment_config.get(
-            "count"
-        ),
+            "domain": assessment_config.get(
+                "domain"
+            ),
 
-        "resume_filename": assessment_config.get(
-            "resume_filename"
+            "difficulty": assessment_config.get(
+                "difficulty"
+            ),
+
+            "count": assessment_config.get(
+                "count"
+            ),
+
+            "resume_filename": assessment_config.get(
+                "resume_filename"
+            )
+
+        },
+
+        "created_at": time.time(),
+
+        "user_id": session.get(
+            "user_id",
+            1
         )
 
     }
 
 
+    # ========================================================================
+    # STORE ONLY RESULT ID IN SESSION
+    # ========================================================================
+
+    session[
+        "technical_result_id"
+    ] = result_id
+
+
     # ------------------------------------------------------------------------
-    # Remove completed assessment from server memory
+    # Remove old large result fields from session
+    # ------------------------------------------------------------------------
+
+    session.pop(
+        "technical_result",
+        None
+    )
+
+    session.pop(
+        "technical_result_config",
+        None
+    )
+
+
+    # ------------------------------------------------------------------------
+    # Remove completed assessment
     # ------------------------------------------------------------------------
 
     TECHNICAL_ASSESSMENTS.pop(
@@ -1029,6 +1066,52 @@ def submit():
 
 
     # ------------------------------------------------------------------------
+    # Logging
+    # ------------------------------------------------------------------------
+
+    print(
+        "=================================================="
+    )
+
+    print(
+        "[TECHNICAL] Assessment submitted successfully."
+    )
+
+    print(
+        f"[TECHNICAL] Result ID: {result_id}"
+    )
+
+    print(
+        f"[TECHNICAL] Score: "
+        f"{result_data.get('score', 0)}/"
+        f"{result_data.get('total_marks', 0)}"
+    )
+
+    print(
+        f"[TECHNICAL] Correct answers: "
+        f"{result_data.get('correct_count', 0)}"
+    )
+
+    print(
+        f"[TECHNICAL] Accuracy: "
+        f"{result_data.get('accuracy_percentage', 0)}%"
+    )
+
+    print(
+        f"[TECHNICAL] Time: "
+        f"{result_data.get('time_taken_seconds', 0)} seconds"
+    )
+
+    print(
+        "[TECHNICAL] Result stored server-side."
+    )
+
+    print(
+        "=================================================="
+    )
+
+
+    # ------------------------------------------------------------------------
     # Redirect to result page
     # ------------------------------------------------------------------------
 
@@ -1049,12 +1132,35 @@ def submit():
 )
 def result():
 
-    result_data = session.get(
-        "technical_result"
+    # ------------------------------------------------------------------------
+    # Get result ID from session
+    # ------------------------------------------------------------------------
+
+    result_id = session.get(
+        "technical_result_id"
     )
 
 
-    if not result_data:
+    print(
+        "[TECHNICAL] Result requested."
+    )
+
+    print(
+        f"[TECHNICAL] Result ID: "
+        f"{result_id}"
+    )
+
+
+    # ------------------------------------------------------------------------
+    # No result ID
+    # ------------------------------------------------------------------------
+
+    if not result_id:
+
+        print(
+            "[TECHNICAL] ERROR: "
+            "No result ID in session."
+        )
 
         return redirect(
             url_for(
@@ -1063,14 +1169,75 @@ def result():
         )
 
 
-    user = get_current_user()
+    # ------------------------------------------------------------------------
+    # Get result from server-side storage
+    # ------------------------------------------------------------------------
+
+    stored_result = TECHNICAL_RESULTS.get(
+        result_id
+    )
 
 
-    result_config = session.get(
-        "technical_result_config",
+    if not stored_result:
+
+        print(
+            "[TECHNICAL] ERROR: "
+            "Result not found in server storage."
+        )
+
+        session.pop(
+            "technical_result_id",
+            None
+        )
+
+        return redirect(
+            url_for(
+                "technical.index"
+            )
+        )
+
+
+    # ------------------------------------------------------------------------
+    # Get result data
+    # ------------------------------------------------------------------------
+
+    result_data = stored_result.get(
+        "result",
         {}
     )
 
+
+    result_config = stored_result.get(
+        "config",
+        {}
+    )
+
+
+    # ------------------------------------------------------------------------
+    # Current user
+    # ------------------------------------------------------------------------
+
+    user = get_current_user()
+
+
+    # ------------------------------------------------------------------------
+    # Logging
+    # ------------------------------------------------------------------------
+
+    print(
+        "[TECHNICAL] Displaying technical result."
+    )
+
+    print(
+        f"[TECHNICAL] Score: "
+        f"{result_data.get('score', 0)}/"
+        f"{result_data.get('total_marks', 0)}"
+    )
+
+
+    # ------------------------------------------------------------------------
+    # Render result
+    # ------------------------------------------------------------------------
 
     return render_template(
         "result.html",
