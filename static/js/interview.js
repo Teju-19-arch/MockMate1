@@ -1,7 +1,9 @@
 /* MockMate live interview room
    Handles: AI avatar speaking questions (Web Speech API), live webcam/mic
-   capture (MediaRecorder), uploading the recorded answer for analysis,
-   and rendering the returned scores/feedback. */
+   capture (MediaRecorder), uploading the recorded answer for analysis
+   in the background, and -- once every question is answered --
+   redirecting to a single overall results page (no per-question scores
+   shown during the interview itself). */
 
 (function () {
   const questions = window.MOCKMATE_QUESTIONS || [];
@@ -26,11 +28,11 @@
   const btnStop = document.getElementById('btn-stop');
   const btnReplay = document.getElementById('btn-replay');
   const btnNext = document.getElementById('btn-next');
-  const btnFinish = document.getElementById('btn-finish');
 
   const resultPanel = document.getElementById('result-panel');
   const analyzingMsg = document.getElementById('analyzing-msg');
   const resultContent = document.getElementById('result-content');
+  const feedbackText = document.getElementById('feedback-text');
 
   function updateProgress() {
     const pct = Math.round((qIndex / questions.length) * 100);
@@ -58,10 +60,6 @@
   }
 
   function loadQuestion(index) {
-    if (index >= questions.length) {
-      showCompletion();
-      return;
-    }
     questionTextEl.textContent = questions[index];
     updateProgress();
     resultPanel.classList.remove('visible');
@@ -73,16 +71,6 @@
     speakQuestion(questions[index]);
   }
 
-  function showCompletion() {
-    questionTextEl.textContent = 'Interview complete -- great work!';
-    avatarStatus.textContent = 'DONE';
-    document.querySelector('.control-row').style.display = 'none';
-    btnFinish.style.display = 'inline-flex';
-    trackFill.style.width = '100%';
-    trackLabel.textContent = `All ${questions.length} questions completed`;
-  }
-
-  // ---- Camera / mic setup ----
   btnCamera.addEventListener('click', async () => {
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -96,7 +84,6 @@
     }
   });
 
-  // ---- Recording ----
   btnRecord.addEventListener('click', () => {
     if (!mediaStream) return;
     recordedChunks = [];
@@ -127,12 +114,17 @@
     speakQuestion(questions[qIndex]);
   });
 
+  const isLastQuestion = () => qIndex + 1 >= questions.length;
+
   async function handleRecordingStop() {
     const blob = new Blob(recordedChunks, { type: 'video/webm' });
 
     resultPanel.classList.add('visible');
     analyzingMsg.style.display = 'block';
     resultContent.style.display = 'none';
+    analyzingMsg.textContent = isLastQuestion()
+      ? 'Analyzing your final answer and preparing your overall report...'
+      : 'Analyzing your speech and expressions...';
 
     const formData = new FormData();
     formData.append('media', blob, 'answer.webm');
@@ -144,29 +136,28 @@
         body: formData,
       });
       const data = await response.json();
-
       analyzingMsg.style.display = 'none';
 
+      if (isLastQuestion()) {
+        window.location.href = `/interview/${sessionId}/results`;
+        return;
+      }
+
+      resultContent.style.display = 'block';
       if (data.error) {
-        resultContent.style.display = 'block';
-        document.getElementById('feedback-text').textContent =
-          'Analysis error: ' + data.error + ' -- you can still move to the next question.';
+        feedbackText.textContent = 'Analysis error: ' + data.error + ' -- you can still move to the next question.';
       } else {
-        resultContent.style.display = 'block';
-        document.getElementById('score-overall').textContent = data.overall_score;
-        document.getElementById('score-eye').textContent = data.eye_contact_score + '%';
-        document.getElementById('score-conf').textContent = data.confidence_score;
-        document.getElementById('score-filler').textContent = data.filler_word_count;
-        document.getElementById('score-wpm').textContent = data.speaking_rate_wpm;
-        document.getElementById('feedback-text').textContent = data.feedback;
-        document.getElementById('transcript-text').textContent = data.transcript
-          ? `"${data.transcript}"` : '(no speech detected in the recording)';
+        feedbackText.textContent = '✓ Answer recorded.';
       }
       btnNext.style.display = 'inline-flex';
     } catch (err) {
       analyzingMsg.style.display = 'none';
+      if (isLastQuestion()) {
+        window.location.href = `/interview/${sessionId}/results`;
+        return;
+      }
       resultContent.style.display = 'block';
-      document.getElementById('feedback-text').textContent = 'Could not reach the server for analysis: ' + err.message;
+      feedbackText.textContent = 'Could not reach the server for analysis: ' + err.message;
       btnNext.style.display = 'inline-flex';
     }
   }
@@ -176,7 +167,6 @@
     loadQuestion(qIndex);
   });
 
-  // ---- Init ----
   updateProgress();
   if (questions.length > 0) {
     speakQuestion(questions[0]);

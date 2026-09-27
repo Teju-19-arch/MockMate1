@@ -10,6 +10,13 @@ IDEAL_WPM_RANGE = (110, 160)  # comfortable speaking pace for interviews
 
 
 def _speech_component_score(speech: dict) -> float:
+    transcript = (speech.get("transcript") or "").strip()
+    if not transcript:
+        # No speech was detected at all -- this must never score the same
+        # as a fluent, filler-free answer. Treat it as an unanswered
+        # question rather than running it through the normal formula.
+        return 0.0
+
     score = 100.0
 
     # Penalize filler words
@@ -30,6 +37,11 @@ def _speech_component_score(speech: dict) -> float:
 
 
 def _build_feedback(speech: dict, facial: dict, speech_score: float) -> str:
+    transcript = (speech.get("transcript") or "").strip()
+    if not transcript:
+        return ("No speech was detected for this answer -- make sure your microphone is "
+                "enabled and you're speaking clearly, then try again.")
+
     tips = []
 
     if speech.get("filler_word_count", 0) > 3:
@@ -62,8 +74,15 @@ def build_report(speech: dict, facial: dict) -> dict:
     speech_score = _speech_component_score(speech)
     facial_score = facial.get("confidence_score", 0.0)
 
-    # Weighted overall score: 55% verbal delivery, 45% non-verbal presence
-    overall_score = round((speech_score * 0.55) + (facial_score * 0.45), 1)
+    transcript = (speech.get("transcript") or "").strip()
+    if not transcript:
+        # No answer given -- don't let facial presence alone carry a
+        # decent-looking overall score. Heavily discount it instead of
+        # applying the normal 55/45 speech/facial blend.
+        overall_score = round(facial_score * 0.15, 1)
+    else:
+        # Weighted overall score: 55% verbal delivery, 45% non-verbal presence
+        overall_score = round((speech_score * 0.55) + (facial_score * 0.45), 1)
 
     feedback = _build_feedback(speech, facial, speech_score)
 

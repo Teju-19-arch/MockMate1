@@ -165,6 +165,19 @@ def new_interview():
 # ---------------------------------------------------------------------------
 # Live interview room (AI avatar + webcam recording)
 # ---------------------------------------------------------------------------
+@app.route("/interview/<int:session_id>/results")
+@login_required
+def interview_results(session_id):
+    interview_session = database.get_session(session_id)
+    if not interview_session or interview_session["user_id"] != current_user()["id"]:
+        flash("Interview session not found.", "error")
+        return redirect(url_for("dashboard"))
+
+    summary = database.get_session_summary(session_id)
+    return render_template(
+        "interview_results.html", session_id=session_id, summary=summary,
+        interview_session=interview_session,
+    )
 
 @app.route("/interview/<int:session_id>")
 @login_required
