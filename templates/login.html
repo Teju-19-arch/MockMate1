@@ -3,22 +3,62 @@
 {% block shell_class %}shell{% endblock %}
 
 {% block content %}
-<div class="auth-shell">
-  <span class="eyebrow">Welcome back</span>
-  <h1 style="font-size:1.9rem;">Log in to MockMate</h1>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
 
-  <form method="POST">
-    <label for="email">Email</label>
-    <input type="email" id="email" name="email" required>
+<div class="auth-split">
+  <div class="auth-visual">
+    <a href="#" class="brand"><span class="dot"></span> MockMate</a>
 
-    <label for="password">Password</label>
-    <input type="password" id="password" name="password" required>
+    <div class="swiper feature-swiper">
+      <div class="swiper-wrapper">
+        <div class="swiper-slide">
+          <div class="feature-num">01</div>
+          <h2 class="feature-title">Practice with an interviewer that <span class="hl">never gets tired.</span></h2>
+          <p class="feature-text">Company-specific questions, spoken aloud, as many rounds as you want.</p>
+        </div>
+        <div class="swiper-slide">
+          <div class="feature-num">02</div>
+          <h2 class="feature-title">See how you <span class="hl">actually come across.</span></h2>
+          <p class="feature-text">Eye contact, pace, filler words and confidence, measured on every answer.</p>
+        </div>
+        <div class="swiper-slide">
+          <div class="feature-num">03</div>
+          <h2 class="feature-title">Watch your readiness <span class="hl">climb.</span></h2>
+          <p class="feature-text">One overall report after each session, tracked per company you are targeting.</p>
+        </div>
+      </div>
+    </div>
 
-    <button type="submit" class="btn btn-primary btn-block">Log in</button>
-  </form>
+    <div class="feature-dots"></div>
+  </div>
 
-  <p style="margin-top:20px; font-size:0.9rem; color:var(--text-dim);">
-    New here? <a href="{{ url_for('register') }}" style="color:var(--brass); font-weight:600;">Create an account</a>
-  </p>
+  <div class="auth-form">
+    <span class="eyebrow" style="align-self:flex-start;">Welcome back</span>
+    <h1>Log in to MockMate</h1>
+    <p class="form-sub">Pick up where you left off.</p>
+
+    <form method="POST">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required>
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" required>
+
+      <button type="submit" class="btn btn-primary btn-block">Log in</button>
+    </form>
+
+    <p class="auth-alt">New here? <a href="{{ url_for('register') }}">Create an account</a></p>
+  </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script>
+  if (window.Swiper) {
+    new Swiper('.feature-swiper', {
+      slidesPerView: 1, speed: 700, loop: true, grabCursor: true,
+      autoplay: { delay: 3800, disableOnInteraction: false },
+      pagination: { el: '.feature-dots', clickable: true }
+    });
+  }
+</script>
 {% endblock %}

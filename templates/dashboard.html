@@ -2,90 +2,226 @@
 {% block title %}Dashboard · MockMate{% endblock %}
 
 {% block content %}
-<span class="eyebrow">Placement Command Center</span>
-<h1>Welcome, {{ user.name.split(' ')[0] }}</h1>
-<p style="color:var(--text-dim); margin-bottom:32px;">
-  {{ user.college or 'Your college' }} · {{ user.branch or 'Your branch' }} · Targeting {{ user.target_role or 'your next role' }}
-</p>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
 
-<div class="grid-3" style="margin-bottom:32px;">
-  <div class="stat-tile">
-    <div class="stat-value">{{ summary.avg_overall }}<span style="font-size:1rem;">/100</span></div>
-    <div class="stat-label">Placement readiness score</div>
+{% set first_name = user.name.split(' ')[0] %}
+{% set arrow %}<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M8 7h9v9"/></svg>{% endset %}
+
+<!-- ============ HERO STAGE ============ -->
+<section class="hero2">
+  <div>
+    <span class="hero-kicker fade-up"><i></i> Welcome back, {{ first_name }}</span>
+    <h1 class="hero-title">
+      <span class="word" style="--i:0">Practice</span>
+      <span class="word" style="--i:1">like</span>
+      <span class="word" style="--i:2">it's</span>
+      <span class="word" style="--i:3">the</span>
+      <span class="word hl" style="--i:4">real</span>
+      <span class="word hl" style="--i:5">thing.</span>
+    </h1>
+    <div class="hero-chips fade-up" style="--d:500ms">
+      <span class="hero-chip">{{ user.college or 'Your college' }}</span>
+      <span class="hero-chip">{{ user.branch or 'Your branch' }}</span>
+      <span class="hero-chip">Targeting {{ user.target_role or 'your next role' }}</span>
+    </div>
+    <div class="hero-actions fade-up" style="--d:650ms">
+      <a href="{{ url_for('new_interview') }}" class="btn btn-primary">Start live interview</a>
+      <a href="#numbers" class="btn btn-outline">See my numbers</a>
+    </div>
   </div>
-  <div class="stat-tile">
-    <div class="stat-value">{{ summary.avg_eye_contact }}<span style="font-size:1rem;">%</span></div>
-    <div class="stat-label">Average eye contact</div>
+
+  <div class="score-card fade-up" style="--d:350ms">
+    <div class="ring" style="--p:{{ summary.avg_overall }}"><b>{{ summary.avg_overall }}</b></div>
+    <div class="score-label">Placement readiness score</div>
+    <div class="score-mini">
+      <div><b>{{ summary.avg_eye_contact }}%</b><span>Eye contact</span></div>
+      <div><b>{{ summary.avg_confidence }}%</b><span>Confidence</span></div>
+    </div>
   </div>
-  <div class="stat-tile">
-    <div class="stat-value">{{ summary.total_answers }}</div>
-    <div class="stat-label">Answers analyzed</div>
+</section>
+
+<!-- ============ MARQUEE ============ -->
+{% set marquee_words = company_list if company_list else ['Eye contact', 'Confidence', 'Filler words', 'Speaking pace', 'Answer quality'] %}
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    {% for _ in range(8) %}{% for w in marquee_words %}<span>{{ w }}</span>{% endfor %}{% endfor %}
   </div>
 </div>
 
-<div class="grid-2" style="margin-bottom:32px; align-items:start;">
-  <div class="card">
-    <h3>Start your next session</h3>
-    <p style="color:var(--text-dim); font-size:0.9rem; margin-bottom:18px;">
-      Practice for a specific company's placement drive, a job description, or general domain questions.
-    </p>
-    <a href="{{ url_for('new_interview') }}" class="btn btn-primary">+ New live interview</a>
+<!-- ============ TRACKS CAROUSEL ============ -->
+<div class="sec-head reveal">
+  <div>
+    <h2 class="sec-title">Pick your next track</h2>
+    <p class="sec-sub">Drag or use the arrows. Each track tunes your questions to a company's placement drive.</p>
   </div>
+  <div class="sw-nav">
+    <button class="sw-btn tracks-prev" aria-label="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="sw-btn tracks-next" aria-label="Next"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+</div>
 
-  <div class="card">
-    <h3>Company-wise readiness</h3>
-    {% if summary.by_company %}
-      <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:12px;">
-        {% for company, score in summary.by_company.items() %}
-          <div class="company-chip">{{ company }} <span class="score">{{ score }}</span></div>
-        {% endfor %}
-      </div>
+<div class="swiper tracks-swiper reveal">
+  <div class="swiper-wrapper">
+    {% for c in company_list %}
+    {% set sc = summary.by_company.get(c) %}
+    <div class="swiper-slide">
+      <a class="track-card" href="{{ url_for('new_interview') }}" data-initial="{{ c[0] }}">
+        <span class="track-tag">{{ 'Practiced' if sc is not none else 'New track' }}</span>
+        <div>
+          <h3 class="track-name">{{ c }}</h3>
+          <p class="track-meta">Campus placement drive</p>
+        </div>
+        <div class="track-foot">
+          <span class="track-score">{% if sc is not none %}<b>{{ sc }}</b>readiness{% else %}Not attempted yet{% endif %}</span>
+          <span class="track-go" aria-hidden="true">{{ arrow }}</span>
+        </div>
+      </a>
+    </div>
     {% else %}
-      <p style="color:var(--text-dim); font-size:0.9rem;">
-        No company-specific sessions yet. Pick a target company next time you start an interview to track readiness per company.
-      </p>
-      <div style="display:flex; flex-wrap:wrap; gap:8px; margin-top:10px;">
-        {% for c in company_list %}
-          <div class="company-chip">{{ c }}</div>
-        {% endfor %}
-      </div>
-    {% endif %}
+    <div class="swiper-slide">
+      <a class="track-card" href="{{ url_for('new_interview') }}" data-initial="M">
+        <span class="track-tag">Start here</span>
+        <div>
+          <h3 class="track-name">Domain practice</h3>
+          <p class="track-meta">General technical questions</p>
+        </div>
+        <div class="track-foot">
+          <span class="track-score">Not attempted yet</span>
+          <span class="track-go" aria-hidden="true">{{ arrow }}</span>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<div class="progress-wrap reveal"><div class="tracks-progress"></div></div>
+
+<!-- ============ METRICS ============ -->
+<div class="sec-head reveal" id="numbers">
+  <div>
+    <h2 class="sec-title">Your numbers</h2>
+    <p class="sec-sub">Averages across every answer you have recorded so far.</p>
   </div>
 </div>
 
-<div class="card">
-  <h3>Recent answers</h3>
+<div class="metrics reveal">
+  <div class="metric">
+    <div class="m-label">Overall readiness</div>
+    <div class="num"><span data-count="{{ summary.avg_overall }}">{{ summary.avg_overall }}</span><small>/100</small></div>
+    <div class="m-bar"><i style="--w:{{ summary.avg_overall }}%; --bar:var(--ink)"></i></div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Eye contact</div>
+    <div class="num"><span data-count="{{ summary.avg_eye_contact }}">{{ summary.avg_eye_contact }}</span><small>%</small></div>
+    <div class="m-bar"><i style="--w:{{ summary.avg_eye_contact }}%; --bar:var(--sage)"></i></div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Confidence</div>
+    <div class="num"><span data-count="{{ summary.avg_confidence }}">{{ summary.avg_confidence }}</span><small>%</small></div>
+    <div class="m-bar"><i style="--w:{{ summary.avg_confidence }}%; --bar:var(--brass)"></i></div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Answers analyzed</div>
+    <div class="num"><span data-count="{{ summary.total_answers }}">{{ summary.total_answers }}</span></div>
+    <div class="m-note">across {{ summary.by_company|length }} company track{{ '' if summary.by_company|length == 1 else 's' }}</div>
+  </div>
+</div>
+
+<!-- ============ RECENT ANSWERS CAROUSEL ============ -->
+<div class="sec-head reveal">
+  <div>
+    <h2 class="sec-title">Recent answers</h2>
+    <p class="sec-sub">Your latest recordings, newest first.</p>
+  </div>
   {% if history %}
-  <table class="history">
-    <thead>
-      <tr>
-        <th>Question</th>
-        <th>Target</th>
-        <th>Overall</th>
-        <th>Eye contact</th>
-        <th>Filler words</th>
-        <th>Pace (WPM)</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for r in history %}
-      <tr>
-        <td style="max-width:280px;">{{ r.question }}</td>
-        <td>{{ r.company or r.job_title or r.domain or '—' }}</td>
-        <td>
-          <span class="score-pill {% if r.overall_score >= 70 %}score-high{% elif r.overall_score >= 45 %}score-mid{% else %}score-low{% endif %}">
-            {{ r.overall_score }}
-          </span>
-        </td>
-        <td>{{ r.eye_contact_score }}%</td>
-        <td>{{ r.filler_word_count }}</td>
-        <td>{{ r.speaking_rate_wpm }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% else %}
-    <p style="color:var(--text-dim); font-size:0.9rem;">No completed answers yet -- start a New Interview to build your history.</p>
+  <div class="sw-nav">
+    <button class="sw-btn answers-prev" aria-label="Previous"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button>
+    <button class="sw-btn answers-next" aria-label="Next"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
   {% endif %}
 </div>
+
+{% if history %}
+<div class="swiper answers-swiper reveal">
+  <div class="swiper-wrapper">
+    {% for r in history[:10] %}
+    <div class="swiper-slide" style="height:auto;">
+      <article class="answer-card">
+        <div class="answer-top">
+          <span class="score-pill {% if r.overall_score >= 70 %}score-high{% elif r.overall_score >= 45 %}score-mid{% else %}score-low{% endif %}">{{ r.overall_score }}</span>
+          <span class="answer-target">{{ r.company or r.job_title or r.domain or 'General' }}</span>
+        </div>
+        <p class="answer-q">{{ r.question }}</p>
+        <div class="answer-metrics">
+          <div><b>{{ r.eye_contact_score }}%</b><span>Eye contact</span></div>
+          <div><b>{{ r.filler_word_count }}</b><span>Fillers</span></div>
+          <div><b>{{ r.speaking_rate_wpm }}</b><span>WPM</span></div>
+        </div>
+      </article>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+<div class="empty-note reveal">No answers yet. Start a live interview and your recordings will show up here.</div>
+{% endif %}
+
+<!-- ============ CTA BAND ============ -->
+<section class="cta-band reveal">
+  <div>
+    <h2>Ready for your next round?</h2>
+    <p>Every answer you record makes your readiness score more accurate.</p>
+  </div>
+  <a href="{{ url_for('new_interview') }}" class="btn btn-light">Start live interview</a>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script>
+(function () {
+  document.documentElement.classList.add('js');
+
+  if (window.Swiper) {
+    new Swiper('.tracks-swiper', {
+      slidesPerView: 1.12, spaceBetween: 16, grabCursor: true, speed: 650,
+      pagination: { el: '.tracks-progress', type: 'progressbar' },
+      navigation: { prevEl: '.tracks-prev', nextEl: '.tracks-next' },
+      breakpoints: {
+        620: { slidesPerView: 2.1 },
+        960: { slidesPerView: 3.1, spaceBetween: 20 }
+      }
+    });
+    if (document.querySelector('.answers-swiper')) {
+      new Swiper('.answers-swiper', {
+        slidesPerView: 1.1, spaceBetween: 16, grabCursor: true, freeMode: true,
+        navigation: { prevEl: '.answers-prev', nextEl: '.answers-next' },
+        breakpoints: {
+          620: { slidesPerView: 2.1 },
+          960: { slidesPerView: 3.1, spaceBetween: 20 }
+        }
+      });
+    }
+  }
+
+  // reveal sections as they scroll into view
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(function (el) { io.observe(el); });
+
+  // count-up numbers
+  document.querySelectorAll('[data-count]').forEach(function (el) {
+    var raw = el.getAttribute('data-count');
+    var end = parseFloat(raw);
+    if (isNaN(end)) return;
+    var dec = (raw.split('.')[1] || '').length;
+    var start = performance.now(), dur = 1200;
+    (function tick(now) {
+      var p = Math.min((now - start) / dur, 1);
+      var eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = (end * eased).toFixed(dec);
+      if (p < 1) requestAnimationFrame(tick);
+    })(start);
+  });
+})();
+</script>
 {% endblock %}
