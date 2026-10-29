@@ -57,15 +57,15 @@ Built around the subject itself — formal Indian campus/job placement interview
 2. From inside the `mockmate_flask` folder:
    ```bash
    python -m venv venv
-   venv\Scripts\activate        # Windows
+   .\venv\Scripts\python.exe -m pip install -r requirements.txt    # Windows
    source venv/bin/activate     # Mac/Linux
 
-   pip install -r requirements.txt
+  
    ```
 
 3. Run it:
    ```bash
-   python app.py
+   .\venv\Scripts\python.exe app.py
    ```
    Open **http://localhost:5000** in your browser.
 
